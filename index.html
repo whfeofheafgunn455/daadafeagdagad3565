@@ -1,239 +1,536 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>最安値データベース＆計算機</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>最安値データベース＆計算機</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    [v-cloak] { display: none; }
+    .fade-enter-active, .fade-leave-active { transition: all .18s ease; }
+    .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(-4px); }
+  </style>
 </head>
-<body class="bg-gray-100 font-sans pb-20">
-    <div id="app" class="max-w-2xl mx-auto bg-white min-h-screen shadow-md">
-        <!-- ヘッダー -->
-        <header class="bg-blue-600 text-white p-4 sticky top-0 z-10 shadow">
-            <h1 class="text-xl font-bold text-center">{{ activeTab === 'db' ? '最安値データベース' : '瞬時！単価コンペア' }}</h1>
-        </header>
+<body class="bg-gray-100 font-sans pb-24">
+  <div id="app" v-cloak class="max-w-2xl mx-auto bg-white min-h-screen shadow-md relative">
+    <header class="bg-blue-700 text-white px-4 py-4 sticky top-0 z-30 shadow">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h1 class="text-lg font-bold leading-tight">
+            {{ activeTab === 'db' ? '検索画面' : '瞬時！単価コンペア' }}
+          </h1>
+          <p class="text-xs text-blue-100 mt-1">
+            {{ activeTab === 'db' ? '検索・店舗フィルタ・カテゴリ順ソート' : '2商品を比較して単価を見る' }}
+          </p>
+        </div>
+        <button
+          type="button"
+          @click="openCreate"
+          class="w-11 h-11 rounded-full bg-white text-blue-700 text-2xl font-bold shadow flex items-center justify-center"
+          aria-label="新規登録"
+        >
+          ＋
+        </button>
+      </div>
+    </header>
 
-        <!-- メインコンテンツ -->
-        <main class="p-4">
-            <!-- 【タブ1】瞬時単価比較 -->
-            <div v-show="activeTab === 'calc'">
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <h3 class="font-bold text-blue-700 mb-2">商品 A</h3>
-                        <label class="block text-xs text-gray-700">価格 (円)</label>
-                        <input type="number" v-model.number="calc.itemA.price" class="w-full border rounded p-2 mb-2 text-right">
-                        <label class="block text-xs text-gray-700">容量</label>
-                        <input type="number" v-model.number="calc.itemA.capacity" class="w-full border rounded p-2 mb-2 text-right">
-                        <div class="text-sm mt-2 text-center">単価: <span class="font-bold text-blue-800">{{ unitPriceA }}</span> 円</div>
-                    </div>
-                    <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <h3 class="font-bold text-green-700 mb-2">商品 B</h3>
-                        <label class="block text-xs text-gray-700">価格 (円)</label>
-                        <input type="number" v-model.number="calc.itemB.price" class="w-full border rounded p-2 mb-2 text-right">
-                        <label class="block text-xs text-gray-700">容量</label>
-                        <input type="number" v-model.number="calc.itemB.capacity" class="w-full border rounded p-2 mb-2 text-right">
-                        <div class="text-sm mt-2 text-center">単価: <span class="font-bold text-green-800">{{ unitPriceB }}</span> 円</div>
-                    </div>
-                </div>
-                <div :class="resultClass" class="p-4 rounded border-l-4">
-                    <p class="font-bold mb-1">【結論】</p>
-                    <p class="text-lg font-bold">{{ comparisonResult }}</p>
-                </div>
+    <main class="p-4 space-y-6">
+      <section v-show="activeTab === 'db'" aria-labelledby="searchTitle">
+        <h2 id="searchTitle" class="sr-only">検索画面</h2>
+
+        <div class="bg-white rounded-2xl border p-4 shadow-sm space-y-4">
+          <div>
+            <label for="searchQuery" class="block text-sm font-bold text-gray-700 mb-2">🔍 商品検索</label>
+            <input
+              id="searchQuery"
+              v-model.trim="searchQuery"
+              type="search"
+              inputmode="search"
+              placeholder="牛乳 など"
+              class="w-full border rounded-xl px-4 py-4 text-base bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="categoryFilter" class="block text-sm font-bold text-gray-700 mb-2">カテゴリー</label>
+              <select
+                id="categoryFilter"
+                v-model="selectedCategory"
+                class="w-full border rounded-xl px-4 py-4 text-base bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">全て</option>
+                <option v-for="c in categoryOptions" :key="c" :value="c">{{ c }}</option>
+              </select>
             </div>
 
-            <!-- 【タブ2】データベース -->
-            <div v-show="activeTab === 'db'">
-                <!-- 新規追加フォーム -->
-                <div class="bg-gray-50 p-4 rounded-lg border mb-6">
-                    <h3 class="font-bold text-gray-700 mb-3">商品の追加・更新</h3>
-                    <div class="grid grid-cols-2 gap-2 mb-2">
-                        <div>
-                            <label class="block text-xs text-gray-600">分類</label>
-                            <input type="text" v-model="form.category" class="w-full border rounded p-1" placeholder="冷凍食品 など">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600">商品名</label>
-                            <input type="text" v-model="form.name" class="w-full border rounded p-1">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600">容量</label>
-                            <input type="number" v-model.number="form.capacity" class="w-full border rounded p-1 text-right">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600">単位</label>
-                            <input type="text" v-model="form.unit" class="w-full border rounded p-1" placeholder="g, 枚 など">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-2 mb-3">
-                        <div>
-                            <label class="block text-xs text-gray-600">業スー(通常)</label>
-                            <input type="number" v-model.number="form.priceGyomu" class="w-full border rounded p-1 text-right">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600">ウエルシア(通常)</label>
-                            <input type="number" v-model.number="form.priceWelcia" class="w-full border rounded p-1 text-right">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600">イオン(店頭)</label>
-                            <input type="number" v-model.number="form.priceAeon" class="w-full border rounded p-1 text-right">
-                        </div>
-                    </div>
-                    <button @click="saveProduct" class="w-full bg-blue-600 text-white font-bold py-2 rounded shadow hover:bg-blue-700">
-                        保存する
-                    </button>
-                </div>
-
-                <!-- 商品リスト -->
-                <div v-for="product in productsList" :key="product.id" class="bg-white border rounded-lg p-3 mb-3 shadow-sm">
-                    <div class="flex justify-between items-center border-b pb-2 mb-2">
-                        <div>
-                            <span class="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded mr-2">{{ product.category }}</span>
-                            <span class="font-bold text-gray-800">{{ product.name }}</span>
-                            <span class="text-sm text-gray-500 ml-1">({{ product.capacity }}{{ product.unit }})</span>
-                        </div>
-                        <button @click="editProduct(product)" class="text-blue-500 text-sm border border-blue-500 px-2 py-1 rounded">編集</button>
-                    </div>
-                    
-                    <div class="grid grid-cols-3 gap-2 text-sm text-center">
-                        <!-- 業スー -->
-                        <div :class="{'bg-yellow-100 border-yellow-400 border font-bold': product.cheapest === '業スー'}" class="p-1 rounded">
-                            <div class="text-xs text-gray-600">業スー</div>
-                            <div>{{ product.priceGyomu ? product.priceGyomu + '円' : '-' }}</div>
-                            <div class="text-xs text-gray-500" v-if="product.priceGyomu">単: {{ calcUnit(product.priceGyomu, product.capacity) }}</div>
-                        </div>
-                        <!-- ウエルシア（ウエル活1.5倍計算） -->
-                        <div :class="{'bg-yellow-100 border-yellow-400 border font-bold': product.cheapest === 'ウエル活'}" class="p-1 rounded">
-                            <div class="text-xs text-gray-600">ウエル活(実質)</div>
-                            <div>{{ product.priceWelcia ? (product.priceWelcia / 1.5).toFixed(1) + '円' : '-' }}</div>
-                            <div class="text-xs text-gray-500" v-if="product.priceWelcia">単: {{ calcUnit(product.priceWelcia / 1.5, product.capacity) }}</div>
-                        </div>
-                        <!-- イオン（20%還元計算） -->
-                        <div :class="{'bg-yellow-100 border-yellow-400 border font-bold': product.cheapest === 'イオン'}" class="p-1 rounded">
-                            <div class="text-xs text-gray-600">イオン(20%還)</div>
-                            <div>{{ product.priceAeon ? (product.priceAeon * 0.8).toFixed(1) + '円' : '-' }}</div>
-                            <div class="text-xs text-gray-500" v-if="product.priceAeon">単: {{ calcUnit(product.priceAeon * 0.8, product.capacity) }}</div>
-                        </div>
-                    </div>
-                </div>
+            <div>
+              <label for="storeFilter" class="block text-sm font-bold text-gray-700 mb-2">店舗</label>
+              <select
+                id="storeFilter"
+                v-model="storeFilter"
+                class="w-full border rounded-xl px-4 py-4 text-base bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">全て</option>
+                <option value="業スー">業務スーパー</option>
+                <option value="ウエル活">ウエル活</option>
+                <option value="イオン">イオン</option>
+              </select>
             </div>
-        </main>
+          </div>
+        </div>
 
-        <!-- 下部固定ナビゲーションバー -->
-        <nav class="fixed bottom-0 w-full max-w-2xl bg-white border-t flex">
-            <button @click="activeTab = 'db'" :class="activeTab === 'db' ? 'text-blue-600 border-t-2 border-blue-600' : 'text-gray-500'" class="flex-1 py-3 text-center font-bold">
-                📋 データベース
-            </button>
-            <button @click="activeTab = 'calc'" :class="activeTab === 'calc' ? 'text-blue-600 border-t-2 border-blue-600' : 'text-gray-500'" class="flex-1 py-3 text-center font-bold">
-                🧮 単価コンペア
-            </button>
-        </nav>
+        <div class="mt-4 flex items-center justify-between mb-2">
+          <p class="text-sm text-gray-500">検索結果</p>
+          <p class="text-xs text-gray-400">{{ filteredProducts.length }}件</p>
+        </div>
+
+        <div v-if="filteredProducts.length === 0" class="p-6 text-center text-gray-500 bg-white border rounded-2xl">
+          該当する商品がありません
+        </div>
+
+        <div
+          v-for="product in filteredProducts"
+          :key="product.id"
+          class="bg-white border rounded-2xl p-4 mb-3 shadow-sm"
+        >
+          <button type="button" class="w-full text-left" @click="toggleExpand(product.id)">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-xl">{{ getIcon(product.category) }}</span>
+                  <h3 class="font-bold text-gray-900 truncate">{{ product.name }}</h3>
+                </div>
+                <div class="text-sm text-gray-500 flex items-center gap-2">
+                  <span>{{ product.category || '分類なし' }}</span>
+                  <span>・</span>
+                  <span>{{ product.capacity }}{{ product.unit }}</span>
+                </div>
+              </div>
+
+              <div class="text-right shrink-0">
+                <div v-if="product.cheapest !== '-'" class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 font-bold mb-2">
+                  🏆 最安
+                </div>
+                <div class="text-sm text-gray-500">{{ product.cheapestLabel }}</div>
+                <div class="text-xl font-bold" :class="storeColorClass(product.cheapest)">
+                  {{ product.cheapestPriceDisplay }}
+                </div>
+              </div>
+            </div>
+          </button>
+
+          <transition name="fade">
+            <div v-if="expandedId === product.id" class="mt-4 grid grid-cols-1 gap-2 text-sm">
+              <div class="flex items-center justify-between rounded-xl border p-3">
+                <span class="font-semibold text-green-700">業務スーパー</span>
+                <span>{{ product.priceGyomu ? formatYen(product.priceGyomu) : '未登録' }}</span>
+              </div>
+              <div class="flex items-center justify-between rounded-xl border p-3">
+                <span class="font-semibold text-blue-700">ウエル活</span>
+                <span>{{ product.priceWelcia ? formatYen(product.priceWelcia / 1.5, 1) : '未登録' }}</span>
+              </div>
+              <div class="flex items-center justify-between rounded-xl border p-3">
+                <span class="font-semibold text-purple-700">イオン</span>
+                <span>{{ product.priceAeon ? formatYen(product.priceAeon * 0.8, 1) : '未登録' }}</span>
+              </div>
+
+              <button type="button" @click="editProduct(product)"
+                class="mt-1 w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-bold">
+                編集
+              </button>
+            </div>
+          </transition>
+        </div>
+      </section>
+
+      <section v-show="activeTab === 'calc'" aria-labelledby="calcTitle">
+        <div class="flex items-center justify-between mb-3">
+          <h2 id="calcTitle" class="text-base font-bold text-gray-800">単価コンペア</h2>
+          <button type="button" @click="resetCalc" class="text-sm text-blue-600 font-medium">リセット</button>
+        </div>
+
+        <div class="space-y-4">
+          <article class="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+            <h3 class="font-bold text-blue-800 mb-4">商品 A</h3>
+            <label for="aPrice" class="block text-sm font-medium text-gray-700 mb-2">価格</label>
+            <input id="aPrice" type="number" inputmode="numeric" v-model.number="calc.itemA.price"
+              class="w-full border rounded-2xl px-4 py-5 text-right text-2xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label for="aCap" class="block text-sm font-medium text-gray-700 mb-2 mt-4">容量</label>
+            <input id="aCap" type="number" inputmode="numeric" v-model.number="calc.itemA.capacity"
+              class="w-full border rounded-2xl px-4 py-5 text-right text-2xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </article>
+
+          <article class="bg-green-50 border border-green-200 rounded-2xl p-5">
+            <h3 class="font-bold text-green-800 mb-4">商品 B</h3>
+            <label for="bPrice" class="block text-sm font-medium text-gray-700 mb-2">価格</label>
+            <input id="bPrice" type="number" inputmode="numeric" v-model.number="calc.itemB.price"
+              class="w-full border rounded-2xl px-4 py-5 text-right text-2xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
+            <label for="bCap" class="block text-sm font-medium text-gray-700 mb-2 mt-4">容量</label>
+            <input id="bCap" type="number" inputmode="numeric" v-model.number="calc.itemB.capacity"
+              class="w-full border rounded-2xl px-4 py-5 text-right text-2xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
+          </article>
+
+          <div class="rounded-2xl border-l-4 p-5 shadow-sm" :class="resultClass">
+            <div class="text-sm font-bold mb-2">比較結果</div>
+            <div class="text-2xl font-black">{{ comparisonWinner }}</div>
+            <div class="text-lg font-bold mt-2">{{ comparisonUnit }}</div>
+            <div class="text-sm mt-2">{{ comparisonDiffText }}</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 w-full max-w-2xl mx-auto bg-white border-t flex z-30">
+      <button type="button" @click="activeTab = 'db'"
+        :class="activeTab === 'db' ? 'text-blue-700 border-t-2 border-blue-700 bg-blue-50' : 'text-gray-500'"
+        class="flex-1 py-3 min-h-14 text-center font-bold">🔎 検索</button>
+      <button type="button" @click="activeTab = 'calc'"
+        :class="activeTab === 'calc' ? 'text-blue-700 border-t-2 border-blue-700 bg-blue-50' : 'text-gray-500'"
+        class="flex-1 py-3 min-h-14 text-center font-bold">🧮 単価コンペア</button>
+    </nav>
+
+    <div v-if="sheetOpen" class="fixed inset-0 z-40">
+      <div class="absolute inset-0 bg-black/40" @click="closeSheet"></div>
+      <div class="absolute bottom-0 left-0 right-0 mx-auto max-w-2xl bg-white rounded-t-3xl shadow-2xl max-h-[88vh] flex flex-col">
+        <div class="flex items-center justify-between px-4 pt-3 pb-2 border-b">
+          <div>
+            <h3 class="text-base font-bold">{{ form.id ? '編集' : '新規登録' }}</h3>
+            <p class="text-xs text-gray-500">下からスライドするボトムシート</p>
+          </div>
+          <button type="button" @click="closeSheet" class="w-11 h-11 rounded-full bg-gray-100 font-bold">✕</button>
+        </div>
+
+        <div class="p-4 space-y-4 overflow-y-auto flex-1">
+          <div>
+            <label for="formCategory" class="block text-sm font-bold text-gray-700 mb-2">カテゴリー</label>
+            <select id="formCategory" v-model="form.category"
+              class="w-full border rounded-2xl px-4 py-4 text-base bg-gray-50">
+              <option value="">未選択</option>
+              <option v-for="c in categoryOptions" :key="c" :value="c">{{ c }}</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="formName" class="block text-sm font-bold text-gray-700 mb-2">商品名</label>
+            <input id="formName" type="text" v-model.trim="form.name"
+              class="w-full border rounded-2xl px-4 py-4 text-base bg-gray-50" placeholder="商品名">
+            <p v-if="errors.name" class="text-sm text-red-600 mt-1">{{ errors.name }}</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="formCapacity" class="block text-sm font-bold text-gray-700 mb-2">容量</label>
+              <input id="formCapacity" type="number" inputmode="numeric" v-model.number="form.capacity"
+                class="w-full border rounded-2xl px-4 py-4 text-right text-base bg-gray-50" placeholder="500">
+              <p v-if="errors.capacity" class="text-sm text-red-600 mt-1">{{ errors.capacity }}</p>
+            </div>
+            <div>
+              <label for="formUnit" class="block text-sm font-bold text-gray-700 mb-2">単位</label>
+              <input id="formUnit" type="text" v-model.trim="form.unit"
+                class="w-full border rounded-2xl px-4 py-4 text-base bg-gray-50" placeholder="g / ml">
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label for="formGyomu" class="block text-sm font-bold text-green-700 mb-2">業務スーパー</label>
+              <input id="formGyomu" type="number" inputmode="numeric" v-model.number="form.priceGyomu"
+                class="w-full border rounded-2xl px-4 py-4 text-right text-base bg-green-50" placeholder="価格">
+            </div>
+            <div>
+              <label for="formWelcia" class="block text-sm font-bold text-blue-700 mb-2">ウエル活</label>
+              <input id="formWelcia" type="number" inputmode="numeric" v-model.number="form.priceWelcia"
+                class="w-full border rounded-2xl px-4 py-4 text-right text-base bg-blue-50" placeholder="価格">
+            </div>
+            <div>
+              <label for="formAeon" class="block text-sm font-bold text-purple-700 mb-2">イオン</label>
+              <input id="formAeon" type="number" inputmode="numeric" v-model.number="form.priceAeon"
+                class="w-full border rounded-2xl px-4 py-4 text-right text-base bg-purple-50" placeholder="価格">
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t p-4 bg-white">
+          <button type="button" @click="saveProduct"
+            class="w-full py-4 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-lg">保存</button>
+          <p v-if="notice" class="mt-3 text-sm" :class="noticeType === 'error' ? 'text-red-600' : 'text-green-700'">
+            {{ notice }}
+          </p>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <!-- Firebase & Vue.js Module -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-        import { createApp, ref, computed, onMounted } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { createApp, ref, computed, onMounted } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyByelMKXlBERLyD35nMppiyYt5NCLjHi1U",
-            authDomain: "price-compare-db.firebaseapp.com",
-            projectId: "price-compare-db",
-            storageBucket: "price-compare-db.firebasestorage.app",
-            messagingSenderId: "793495069480",
-            appId: "1:793495069480:web:6c2e37488b6f181f79661d",
-            measurementId: "G-7RGK04500T"
+    const firebaseConfig = {
+      apiKey: "AIzaSyByelMKXlBERLyD35nMppiyYt5NCLjHi1U",
+      authDomain: "price-compare-db.firebaseapp.com",
+      projectId: "price-compare-db",
+      storageBucket: "price-compare-db.firebasestorage.app",
+      messagingSenderId: "793495069480",
+      appId: "1:793495069480:web:6c2e37488b6f181f79661d",
+      measurementId: "G-7RGK04500T"
+    };
+
+    const db = getFirestore(initializeApp(firebaseConfig));
+
+    createApp({
+      setup() {
+        const activeTab = ref('db');
+        const productsList = ref([]);
+        const expandedId = ref(null);
+        const sheetOpen = ref(false);
+        const searchQuery = ref('');
+        const selectedCategory = ref('all');
+        const storeFilter = ref('all');
+        const notice = ref('');
+        const noticeType = ref('success');
+        const errors = ref({ name: '', capacity: '' });
+
+        const calc = ref({
+          itemA: { price: '', capacity: '' },
+          itemB: { price: '', capacity: '' }
+        });
+
+        const form = ref({
+          id: null,
+          category: '',
+          name: '',
+          capacity: '',
+          unit: 'g',
+          priceGyomu: '',
+          priceWelcia: '',
+          priceAeon: ''
+        });
+
+        const categoryIcons = {
+          '飲料': '🥛',
+          '卵': '🥚',
+          'お菓子': '🍪',
+          '冷凍食品': '🧊',
+          'パン': '🍞',
+          '日用品': '🧴',
+          '肉': '🥩',
+          '魚': '🐟'
         };
 
-        const appFirebase = initializeApp(firebaseConfig);
-        const db = getFirestore(appFirebase);
+        const getIcon = (category) => categoryIcons[category] || '📦';
 
-        createApp({
-            setup() {
-                const activeTab = ref('db');
-                const productsList = ref([]);
-                
-                const calc = ref({
-                    itemA: { price: 1000, capacity: 500 },
-                    itemB: { price: 900, capacity: 400 }
-                });
+        const categoryOptions = computed(() => {
+          const set = new Set(productsList.value.map(p => p.category).filter(Boolean));
+          return Array.from(set).sort((a, b) => a.localeCompare(b, 'ja'));
+        });
 
-                const form = ref({ id: null, category: '', name: '', capacity: '', unit: 'g', priceGyomu: '', priceWelcia: '', priceAeon: '' });
+        const formatYen = (value, digits = 0) => {
+          if (value === null || value === undefined || value === '' || Number.isNaN(Number(value))) return '未登録';
+          return `${Number(value).toFixed(digits)}円`;
+        };
 
-                onMounted(() => {
-                    onSnapshot(collection(db, "products"), (snapshot) => {
-                        const items = [];
-                        snapshot.forEach((doc) => {
-                            const data = doc.data();
-                            let pG = data.priceGyomu ? data.priceGyomu / data.capacity : Infinity;
-                            let pW = data.priceWelcia ? (data.priceWelcia / 1.5) / data.capacity : Infinity;
-                            let pA = data.priceAeon ? (data.priceAeon * 0.8) / data.capacity : Infinity;
-                            
-                            let minP = Math.min(pG, pW, pA);
-                            let cheapest = minP === pG ? '業スー' : (minP === pW ? 'ウエル活' : 'イオン');
-                            if(minP === Infinity) cheapest = '-';
+        const storeColorClass = (store) => {
+          if (store === '業スー') return 'text-green-700';
+          if (store === 'ウエル活') return 'text-blue-700';
+          if (store === 'イオン') return 'text-purple-700';
+          return 'text-gray-700';
+        };
 
-                            items.push({ id: doc.id, ...data, cheapest });
-                        });
-                        productsList.value = items;
-                    });
-                });
+        const resolveCheapest = (data) => {
+          const capacity = Number(data.capacity);
+          const pG = data.priceGyomu ? Number(data.priceGyomu) / capacity : Infinity;
+          const pW = data.priceWelcia ? (Number(data.priceWelcia) / 1.5) / capacity : Infinity;
+          const pA = data.priceAeon ? (Number(data.priceAeon) * 0.8) / capacity : Infinity;
+          const minP = Math.min(pG, pW, pA);
 
-                const saveProduct = async () => {
-                    if (!form.value.name || !form.value.capacity) return alert('商品名と容量は必須です');
-                    const payload = {
-                        category: form.value.category,
-                        name: form.value.name,
-                        capacity: form.value.capacity,
-                        unit: form.value.unit,
-                        priceGyomu: form.value.priceGyomu || null,
-                        priceWelcia: form.value.priceWelcia || null,
-                        priceAeon: form.value.priceAeon || null,
-                    };
-                    try {
-                        if (form.value.id) {
-                            await setDoc(doc(db, "products", form.value.id), payload);
-                        } else {
-                            await addDoc(collection(db, "products"), payload);
-                        }
-                        form.value = { id: null, category: '', name: '', capacity: '', unit: 'g', priceGyomu: '', priceWelcia: '', priceAeon: '' };
-                        alert("保存しました！");
-                    } catch (e) {
-                        alert("エラーが発生しました: " + e.message);
-                    }
-                };
+          if (minP === Infinity) return { cheapest: '-', cheapestLabel: '価格未登録', cheapestPriceDisplay: '未登録' };
+          if (minP === pG) return { cheapest: '業スー', cheapestLabel: '業務スーパー', cheapestPriceDisplay: formatYen(Number(data.priceGyomu)) };
+          if (minP === pW) return { cheapest: 'ウエル活', cheapestLabel: 'ウエル活', cheapestPriceDisplay: formatYen(Number(data.priceWelcia) / 1.5, 1) };
+          return { cheapest: 'イオン', cheapestLabel: 'イオン', cheapestPriceDisplay: formatYen(Number(data.priceAeon) * 0.8, 1) };
+        };
 
-                const editProduct = (product) => {
-                    form.value = { ...product };
-                    window.scrollTo(0, 0);
-                };
+        const processedProducts = computed(() => {
+          return [...productsList.value]
+            .map(p => ({ ...p, ...resolveCheapest(p), emoji: getIcon(p.category) }))
+            .sort((a, b) => {
+              const c = (a.category || '').localeCompare(b.category || '', 'ja');
+              if (c !== 0) return c;
+              return (a.name || '').localeCompare(b.name || '', 'ja');
+            });
+        });
 
-                const calcUnit = (price, capacity) => {
-                    if(!price || !capacity) return 0;
-                    return (price / capacity).toFixed(2);
-                };
+        const filteredProducts = computed(() => {
+          const q = searchQuery.value.toLowerCase();
+          return processedProducts.value.filter((p) => {
+            const categoryMatch = selectedCategory.value === 'all' || p.category === selectedCategory.value;
+            const storeMatch = storeFilter.value === 'all' || p.cheapest === storeFilter.value;
+            const text = `${p.name} ${p.category} ${p.capacity} ${p.unit}`.toLowerCase();
+            const queryMatch = !q || text.includes(q);
+            return categoryMatch && storeMatch && queryMatch;
+          });
+        });
 
-                const unitPriceA = computed(() => calcUnit(calc.value.itemA.price, calc.value.itemA.capacity));
-                const unitPriceB = computed(() => calcUnit(calc.value.itemB.price, calc.value.itemB.capacity));
-                
-                const comparisonResult = computed(() => {
-                    if (unitPriceA.value == 0 || unitPriceB.value == 0) return "価格と容量を入力してください";
-                    const diff = Math.abs(unitPriceA.value - unitPriceB.value).toFixed(2);
-                    if (parseFloat(unitPriceA.value) < parseFloat(unitPriceB.value)) return `商品Aの方が 1単位あたり ${diff}円 お得！`;
-                    if (parseFloat(unitPriceA.value) > parseFloat(unitPriceB.value)) return `商品Bの方が 1単位あたり ${diff}円 お得！`;
-                    return "単価は完全に一致しています。";
-                });
+        const toggleExpand = (id) => {
+          expandedId.value = expandedId.value === id ? null : id;
+        };
 
-                const resultClass = computed(() => {
-                    if (unitPriceA.value == 0 || unitPriceB.value == 0) return "bg-gray-100 border-gray-500 text-gray-700";
-                    if (parseFloat(unitPriceA.value) < parseFloat(unitPriceB.value)) return "bg-blue-100 border-blue-500 text-blue-800";
-                    if (parseFloat(unitPriceA.value) > parseFloat(unitPriceB.value)) return "bg-green-100 border-green-500 text-green-800";
-                    return "bg-yellow-100 border-yellow-500 text-yellow-800";
-                });
+        const openCreate = () => {
+          form.value = { id: null, category: '', name: '', capacity: '', unit: 'g', priceGyomu: '', priceWelcia: '', priceAeon: '' };
+          errors.value = { name: '', capacity: '' };
+          notice.value = '';
+          sheetOpen.value = true;
+        };
 
-                return { activeTab, productsList, calc, form, saveProduct, editProduct, calcUnit, unitPriceA, unitPriceB, comparisonResult, resultClass };
-            }
-        }).mount('#app');
-    </script>
+        const closeSheet = () => { sheetOpen.value = false; };
+
+        const editProduct = (product) => {
+          form.value = {
+            id: product.id,
+            category: product.category || '',
+            name: product.name || '',
+            capacity: product.capacity ?? '',
+            unit: product.unit || 'g',
+            priceGyomu: product.priceGyomu ?? '',
+            priceWelcia: product.priceWelcia ?? '',
+            priceAeon: product.priceAeon ?? ''
+          };
+          errors.value = { name: '', capacity: '' };
+          notice.value = '';
+          sheetOpen.value = true;
+        };
+
+        const validate = () => {
+          errors.value = { name: '', capacity: '' };
+          let ok = true;
+          if (!form.value.name) { errors.value.name = '商品名を入力してください。'; ok = false; }
+          if (!form.value.capacity || Number(form.value.capacity) <= 0) { errors.value.capacity = '容量は1以上で入力してください。'; ok = false; }
+          return ok;
+        };
+
+        const saveProduct = async () => {
+          if (!validate()) {
+            noticeType.value = 'error';
+            notice.value = '入力内容を確認してください。';
+            return;
+          }
+          const payload = {
+            category: form.value.category || '',
+            name: form.value.name,
+            capacity: Number(form.value.capacity),
+            unit: form.value.unit || 'g',
+            priceGyomu: form.value.priceGyomu === '' ? null : Number(form.value.priceGyomu),
+            priceWelcia: form.value.priceWelcia === '' ? null : Number(form.value.priceWelcia),
+            priceAeon: form.value.priceAeon === '' ? null : Number(form.value.priceAeon)
+          };
+          try {
+            if (form.value.id) await setDoc(doc(db, "products", form.value.id), payload);
+            else await addDoc(collection(db, "products"), payload);
+            noticeType.value = 'success';
+            notice.value = '保存しました。';
+            sheetOpen.value = false;
+          } catch (e) {
+            noticeType.value = 'error';
+            notice.value = 'エラー: ' + e.message;
+          }
+        };
+
+        const resetCalc = () => {
+          calc.value = {
+            itemA: { price: '', capacity: '' },
+            itemB: { price: '', capacity: '' }
+          };
+        };
+
+        const aUnit = computed(() => {
+          const p = Number(calc.value.itemA.price);
+          const c = Number(calc.value.itemA.capacity);
+          return p > 0 && c > 0 ? p / c : null;
+        });
+
+        const bUnit = computed(() => {
+          const p = Number(calc.value.itemB.price);
+          const c = Number(calc.value.itemB.capacity);
+          return p > 0 && c > 0 ? p / c : null;
+        });
+
+        const validComparison = computed(() => aUnit.value !== null && bUnit.value !== null);
+
+        const comparisonWinner = computed(() => {
+          if (!validComparison.value) return '価格と容量を入力してください';
+          if (aUnit.value < bUnit.value) return '🏆 商品A';
+          if (aUnit.value > bUnit.value) return '🏆 商品B';
+          return '同じ';
+        });
+
+        const comparisonUnit = computed(() => {
+          if (!validComparison.value) return '';
+          const unit = Math.min(aUnit.value, bUnit.value);
+          return `100gあたり ${unit.toFixed(1)}円`;
+        });
+
+        const comparisonDiffText = computed(() => {
+          if (!validComparison.value) return '';
+          const better = Math.min(aUnit.value, bUnit.value);
+          const worse = Math.max(aUnit.value, bUnit.value);
+          const pct = ((worse - better) / worse) * 100;
+          return `${pct.toFixed(0)}％お得`;
+        });
+
+        const resultClass = computed(() => {
+          if (!validComparison.value) return 'bg-gray-100 border-gray-400 text-gray-700';
+          if (aUnit.value < bUnit.value) return 'bg-blue-50 border-blue-500 text-blue-800';
+          if (aUnit.value > bUnit.value) return 'bg-green-50 border-green-500 text-green-800';
+          return 'bg-yellow-50 border-yellow-500 text-yellow-800';
+        });
+
+        const cheapestBadgeClass = (store) => {
+          if (store === '業スー') return 'bg-green-100 text-green-800';
+          if (store === 'ウエル活') return 'bg-blue-100 text-blue-800';
+          if (store === 'イオン') return 'bg-purple-100 text-purple-800';
+          return 'bg-gray-100 text-gray-500';
+        };
+
+        onMounted(() => {
+          onSnapshot(collection(db, "products"), (snapshot) => {
+            const items = [];
+            snapshot.forEach((d) => items.push({ id: d.id, ...d.data() }));
+            productsList.value = items;
+          });
+        });
+
+        return {
+          activeTab,
+          expandedId,
+          sheetOpen,
+          searchQuery,
+          selectedCategory,
+          storeFilter,
+          categoryOptions,
+          filteredProducts,
+          calc,
+          form,
+          notice,
+          noticeType,
+          errors,
+          saveProduct,
+          editProduct,
+          openCreate,
+          closeSheet,
+          toggleExpand,
+          resetCalc,
+          formatYen,
+          storeColorClass,
+          resultClass,
+          comparisonWinner,
+          comparisonUnit,
+          comparisonDiffText,
+          getIcon,
+          cheapestBadgeClass
+        };
+      }
+    }).mount('#app');
+  </script>
 </body>
 </html>
