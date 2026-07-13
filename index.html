@@ -9,9 +9,6 @@
     [v-cloak] { display: none; }
     .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
     .fade-enter-from, .fade-leave-to { opacity: 0; }
-    .slide-enter-active, .slide-leave-active { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-    .slide-enter-from { transform: translateY(100%); }
-    .slide-leave-to { transform: translateY(100%); }
     .bg-theme { background-color: #F59E0B; }
     .text-theme { color: #F59E0B; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -25,58 +22,50 @@
     <!-- ヘッダー -->
     <header class="bg-theme text-white sticky top-0 z-20 shadow-md">
       <div class="px-4 py-3 text-center font-bold text-lg tracking-wide">
-        {{ activeView === 'list' ? '底値リスト' : (activeView === 'calc' ? '単価比較' : '設定') }}
+        {{ activeView === 'list' ? '底値リスト' : (activeView === 'store' ? '店舗別 買うべきリスト' : (activeView === 'calc' ? '単価比較' : '設定')) }}
       </div>
       
-      <!-- リスト用コントロール (検索 & 店舗フィルター & 大分類タブ) -->
-      <div v-show="activeView === 'list'" class="bg-theme">
-        
-        <!-- 検索バー -->
-        <div class="px-3 pb-2 pt-1 relative">
-          <div class="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-gray-400">
+      <!-- 検索バー (リスト画面のみ) -->
+      <div v-show="activeView === 'list'" class="px-3 pb-2 pt-1 bg-theme">
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           </div>
           <input type="search" v-model="searchQuery" placeholder="検索 (例: 納豆)" 
                  class="w-full rounded-xl border-none pl-10 pr-10 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-orange-300 text-sm font-bold text-gray-700 shadow-inner">
-          <button v-if="searchQuery" @click="searchQuery = ''" class="absolute inset-y-0 right-0 pr-6 flex items-center text-gray-400">
+          <button v-if="searchQuery" @click="searchQuery = ''" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400">
             <svg class="w-5 h-5 bg-gray-100 rounded-full p-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
+      </div>
 
-        <!-- 店舗フィルター -->
-        <div class="flex gap-2 overflow-x-auto hide-scrollbar px-3 pb-3 pt-1">
-          <button @click="storeFilter = 'all'" class="px-3 py-1.5 rounded-full font-bold text-xs shrink-0 transition-colors shadow-sm"
-                  :class="storeFilter === 'all' ? 'bg-gray-800 text-white' : 'bg-white/90 text-gray-700'">すべて</button>
-          <button @click="storeFilter = 'イオン'" class="px-3 py-1.5 rounded-full font-bold text-xs shrink-0 transition-colors shadow-sm"
-                  :class="storeFilter === 'イオン' ? 'bg-fuchsia-700 text-white' : 'bg-white/90 text-fuchsia-700'">イオン</button>
-          <button @click="storeFilter = 'ウエルシア'" class="px-3 py-1.5 rounded-full font-bold text-xs shrink-0 transition-colors shadow-sm"
-                  :class="storeFilter === 'ウエルシア' ? 'bg-blue-700 text-white' : 'bg-white/90 text-blue-700'">ウエルシア</button>
-          <button @click="storeFilter = '業務スーパー'" class="px-3 py-1.5 rounded-full font-bold text-xs shrink-0 transition-colors shadow-sm"
-                  :class="storeFilter === '業務スーパー' ? 'bg-green-700 text-white' : 'bg-white/90 text-green-700'">業スー</button>
-        </div>
+      <!-- 大分類タブ (リスト画面かつ検索未入力時) -->
+      <div v-show="activeView === 'list' && !searchQuery" class="flex overflow-x-auto hide-scrollbar px-2 bg-black/10" id="tab-container">
+        <button v-for="cat in sortedMainCategories" :key="cat" :id="'tab-' + cat" @click="activeMainCat = cat" 
+                class="px-5 py-3 font-bold whitespace-nowrap border-b-4 transition-all shrink-0"
+                :class="activeMainCat === cat ? 'border-white text-white' : 'border-transparent text-white/70'">
+          {{ cat }}
+        </button>
+      </div>
 
-        <!-- 大分類タブ -->
-        <div v-show="!searchQuery" class="flex overflow-x-auto hide-scrollbar px-2 bg-black/10">
-          <button v-for="cat in sortedMainCategories" :key="cat" @click="activeMainCat = cat" 
-                  class="px-5 py-3 font-bold whitespace-nowrap border-b-4 transition-all"
-                  :class="activeMainCat === cat ? 'border-white text-white' : 'border-transparent text-white/70'">
-            {{ cat }}
-          </button>
-        </div>
+      <!-- 店舗タブ (店舗別リスト画面) -->
+      <div v-show="activeView === 'store'" class="flex overflow-x-auto hide-scrollbar px-2 bg-black/10">
+        <button v-for="store in ['ウエルシア', 'イオン', '業務スーパー', 'その他']" :key="store" @click="activeStoreTab = store" 
+                class="px-4 py-3 font-bold whitespace-nowrap border-b-4 transition-all shrink-0"
+                :class="activeStoreTab === store ? 'border-white text-white' : 'border-transparent text-white/70'">
+          {{ store }}
+        </button>
       </div>
     </header>
 
-    <!-- メインコンテンツ (スワイプ検知領域) -->
-    <main class="flex-1 overflow-y-auto relative pb-28" 
-          @touchstart="handleTouchStart" 
-          @touchend="handleTouchEnd">
+    <!-- メインコンテンツ (スワイプ検知) -->
+    <main class="flex-1 overflow-y-auto relative pb-28" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
       
       <!-- 画面1: 小分類リスト -->
       <transition name="fade">
         <section v-show="activeView === 'list'" class="p-2 space-y-2">
-          
           <div v-if="filteredGroups.length === 0" class="text-center text-gray-400 py-10 font-bold">
-            {{ searchQuery || storeFilter !== 'all' ? '該当する商品がありません' : 'データが登録されていません' }}
+            {{ searchQuery ? '該当する商品がありません' : 'データが登録されていません' }}
           </div>
 
           <div v-for="group in filteredGroups" :key="group.subName" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -89,20 +78,18 @@
                 <div class="text-left min-w-0">
                   <div class="font-black text-gray-800 text-lg truncate">{{ group.subName }}</div>
                   <div class="text-[11px] text-gray-400 font-bold truncate mt-0.5">
-                    {{ group.bestRecord.productName || '商品名未登録' }}
-                    <span class="ml-1 text-gray-500 font-medium">({{ group.bestRecord.capacity }}{{ group.bestRecord.unit }})</span>
+                    {{ group.bestRecord.productName || '商品名未登録' }} <span class="ml-1 text-gray-500 font-medium">({{ group.bestRecord.capacity }}{{ group.bestRecord.unit }})</span>
                   </div>
-                  <div class="text-xs font-bold mt-1 flex items-center gap-1">
-                    最安: <span :class="getStoreTheme(group.bestRecord.store).text">{{ getStoreIcon(group.bestRecord.store) }}{{ group.bestRecord.store }}</span>
+                  <!-- 登録数と最安店舗 -->
+                  <div class="text-xs font-bold mt-1 flex items-center gap-1.5">
+                    <span>最安: <span :class="getStoreTheme(group.bestRecord.store).text">{{ getStoreIcon(group.bestRecord.store) }}{{ group.bestRecord.store }}</span></span>
+                    <span class="text-gray-300">|</span>
+                    <span class="text-gray-500">登録数: {{ group.records.length }}件</span>
                   </div>
                 </div>
               </div>
               <div class="text-right shrink-0 ml-2">
-                <!-- メイン価格（実質価格） -->
-                <div class="font-black text-xl text-gray-800 leading-none">
-                  {{ formatYen(Math.round(group.bestRecord.effectivePrice)) }}
-                </div>
-                <!-- 元の店頭価格（イオン・ウエルシアのみ） -->
+                <div class="font-black text-xl text-gray-800 leading-none">{{ formatYen(Math.round(group.bestRecord.effectivePrice)) }}</div>
                 <div v-if="group.bestRecord.store === 'ウエルシア' || group.bestRecord.store === 'イオン'" class="text-[10px] text-gray-400 mt-1 line-through">
                   店頭: {{ formatYen(group.bestRecord.price) }}
                 </div>
@@ -119,71 +106,106 @@
                   </div>
                   <div class="text-[11px] text-gray-600 font-bold mt-1">{{ rec.productName || '商品名未設定' }}</div>
                   <div class="text-[11px] text-gray-500">{{ rec.capacity }}{{ rec.unit }}</div>
-                  <div v-if="rec.store === 'ウエルシア'" class="text-[10px] text-red-500 font-bold mt-1">
-                    ({{ settings.discountWelcia }}%割引後)
-                  </div>
-                  <div v-else-if="rec.store === 'イオン'" class="text-[10px] text-red-500 font-bold mt-1">
-                    ({{ settings.discountAeon }}%割引後)
-                  </div>
+                  <div v-if="rec.store === 'ウエルシア'" class="text-[10px] text-red-500 font-bold mt-1">({{ settings.discountWelcia }}%割引後)</div>
+                  <div v-else-if="rec.store === 'イオン'" class="text-[10px] text-red-500 font-bold mt-1">({{ settings.discountAeon }}%割引後)</div>
                 </div>
                 
                 <div class="text-right flex flex-col justify-center">
-                  <div class="font-black text-gray-800 text-lg leading-none">
-                    {{ formatYen(Math.round(rec.effectivePrice)) }}
-                  </div>
-                  <div v-if="rec.store === 'ウエルシア' || rec.store === 'イオン'" class="text-[10px] text-gray-400 mt-1 line-through">
-                    店頭: {{ formatYen(rec.price) }}
-                  </div>
+                  <div class="font-black text-gray-800 text-lg leading-none">{{ formatYen(Math.round(rec.effectivePrice)) }}</div>
+                  <div v-if="rec.store === 'ウエルシア' || rec.store === 'イオン'" class="text-[10px] text-gray-400 mt-1 line-through">店頭: {{ formatYen(rec.price) }}</div>
                   <div class="text-[11px] text-gray-500 font-medium mt-1">{{ formatUnitPrice(rec) }}</div>
                 </div>
 
                 <div class="absolute right-2 top-0 bottom-0 flex flex-col justify-center gap-2">
-                  <button @click.stop="editRecord(rec)" class="w-7 h-7 flex items-center justify-center bg-blue-50 text-blue-500 rounded-full active:scale-90 border border-blue-100">
+                  <button @click.stop="editRecord(rec)" class="w-7 h-7 flex items-center justify-center bg-blue-50 text-blue-500 rounded-full border border-blue-100">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                   </button>
-                  <button @click.stop="deleteRecord(rec.id)" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-full active:scale-90 border border-red-100">
+                  <button @click.stop="deleteRecord(rec.id)" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-full border border-red-100">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                   </button>
                 </div>
               </div>
 
-              <!-- 同カテゴリーへの簡単追加ボタン -->
+              <!-- 簡単追加ボタン -->
               <div class="pt-2 text-center">
                 <button @click.stop="quickAddToGroup(group)" class="text-xs bg-white text-orange-600 px-4 py-2.5 rounded-xl font-bold active:scale-95 border border-orange-200 shadow-sm w-full flex justify-center items-center gap-1">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                   他店舗の「{{ group.subName }}」を追加
                 </button>
               </div>
-
             </div>
-
           </div>
         </section>
       </transition>
 
-      <!-- 画面2: 単価比較 -->
+      <!-- 画面2: 店舗別リスト -->
+      <transition name="fade">
+        <section v-show="activeView === 'store'" class="p-2 space-y-3">
+          <div v-if="storeBuyList.length === 0" class="text-center text-gray-400 py-10 font-bold">
+            この店舗が最安値の商品はありません
+          </div>
+          
+          <div v-for="group in storeBuyList" :key="group.subName" class="bg-white rounded-2xl p-4 shadow-sm border flex items-center justify-between" :class="getStoreTheme(activeStoreTab).border">
+            <div class="flex items-center gap-4 min-w-0">
+              <div class="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-3xl shrink-0 border border-gray-100">{{ group.emoji }}</div>
+              <div class="text-left min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-bold">{{ group.mainCategory }}</span>
+                  <div class="font-black text-gray-800 text-base truncate">{{ group.subName }}</div>
+                </div>
+                <div class="text-[11px] text-gray-500 font-bold truncate">
+                  {{ group.bestRecord.productName || '商品名未登録' }} ({{ group.bestRecord.capacity }}{{ group.bestRecord.unit }})
+                </div>
+              </div>
+            </div>
+            <div class="text-right shrink-0 ml-2">
+              <div class="font-black text-xl leading-none" :class="getStoreTheme(activeStoreTab).text">{{ formatYen(Math.round(group.bestRecord.effectivePrice)) }}</div>
+              <div class="text-[10px] text-gray-400 mt-1">{{ formatUnitPrice(group.bestRecord) }}</div>
+            </div>
+          </div>
+        </section>
+      </transition>
+
+      <!-- 画面3: 単価比較 (割引適用版) -->
       <section v-show="activeView === 'calc'" class="p-4 space-y-4">
-        <!-- ... (前回の単価比較 UI をそのまま保持) ... -->
         <article class="bg-amber-50 border border-amber-200 rounded-3xl p-4 shadow-sm">
           <div class="flex justify-between items-center mb-3">
             <h3 class="font-black text-amber-800 text-lg">商品 A</h3>
             <button @click="registerFromCalc('a')" v-if="calc.a.price && calc.a.cap" class="text-[11px] bg-amber-600 text-white px-3 py-1.5 rounded-full font-bold shadow active:scale-95">価格を登録</button>
           </div>
-          <div class="flex gap-3">
-            <div class="flex-1"><label class="text-[10px] font-bold text-gray-500 ml-1">価格(円)</label><input type="number" v-model.number="calc.a.price" class="w-full rounded-2xl p-3 text-lg font-bold text-right outline-none border border-amber-100"></div>
-            <div class="flex-1"><label class="text-[10px] font-bold text-gray-500 ml-1">容量</label><input type="number" v-model.number="calc.a.cap" class="w-full rounded-2xl p-3 text-lg font-bold text-right outline-none border border-amber-100"></div>
+          <div class="flex gap-2">
+            <div class="flex-1"><label class="text-[10px] font-bold text-gray-500 ml-1">価格(円)</label><input type="number" v-model.number="calc.a.price" class="w-full rounded-xl p-3 text-lg font-bold text-right outline-none border border-amber-100"></div>
+            <div class="flex-1"><label class="text-[10px] font-bold text-gray-500 ml-1">容量</label><input type="number" v-model.number="calc.a.cap" class="w-full rounded-xl p-3 text-lg font-bold text-right outline-none border border-amber-100"></div>
+          </div>
+          <div class="mt-3 flex items-center justify-between">
+            <select v-model="calc.a.store" class="bg-white border border-amber-200 rounded-lg p-2 text-xs text-amber-800 font-bold outline-none">
+              <option value="その他">割引なし(その他)</option><option value="ウエルシア">ウエルシア</option><option value="イオン">イオン</option>
+            </select>
+            <div v-if="calc.a.price && getCalcEffectivePrice('a') !== calc.a.price" class="text-xs text-red-500 font-bold">
+              実質: {{ Math.round(getCalcEffectivePrice('a')) }}円
+            </div>
           </div>
         </article>
+
         <article class="bg-stone-50 border border-stone-200 rounded-3xl p-4 shadow-sm">
           <div class="flex justify-between items-center mb-3">
             <h3 class="font-black text-stone-700 text-lg">商品 B</h3>
             <button @click="registerFromCalc('b')" v-if="calc.b.price && calc.b.cap" class="text-[11px] bg-stone-600 text-white px-3 py-1.5 rounded-full font-bold shadow active:scale-95">価格を登録</button>
           </div>
-          <div class="flex gap-3">
-            <div class="flex-1"><label class="text-[10px] font-bold text-gray-500 ml-1">価格(円)</label><input type="number" v-model.number="calc.b.price" class="w-full rounded-2xl p-3 text-lg font-bold text-right outline-none border border-stone-200"></div>
-            <div class="flex-1"><label class="text-[10px] font-bold text-gray-500 ml-1">容量</label><input type="number" v-model.number="calc.b.cap" class="w-full rounded-2xl p-3 text-lg font-bold text-right outline-none border border-stone-200"></div>
+          <div class="flex gap-2">
+            <div class="flex-1"><label class="text-[10px] font-bold text-gray-500 ml-1">価格(円)</label><input type="number" v-model.number="calc.b.price" class="w-full rounded-xl p-3 text-lg font-bold text-right outline-none border border-stone-200"></div>
+            <div class="flex-1"><label class="text-[10px] font-bold text-gray-500 ml-1">容量</label><input type="number" v-model.number="calc.b.cap" class="w-full rounded-xl p-3 text-lg font-bold text-right outline-none border border-stone-200"></div>
+          </div>
+          <div class="mt-3 flex items-center justify-between">
+            <select v-model="calc.b.store" class="bg-white border border-stone-200 rounded-lg p-2 text-xs text-stone-700 font-bold outline-none">
+              <option value="その他">割引なし(その他)</option><option value="ウエルシア">ウエルシア</option><option value="イオン">イオン</option>
+            </select>
+            <div v-if="calc.b.price && getCalcEffectivePrice('b') !== calc.b.price" class="text-xs text-red-500 font-bold">
+              実質: {{ Math.round(getCalcEffectivePrice('b')) }}円
+            </div>
           </div>
         </article>
+
         <div class="rounded-[24px] overflow-hidden bg-white shadow-md border border-gray-100 mt-6">
           <div v-if="!calcValid" class="p-6 text-center text-gray-400 font-bold">比較する数値を入力してください</div>
           <div v-else>
@@ -192,12 +214,8 @@
               <h2 class="text-2xl font-black text-center mb-4 tracking-wider" :class="calcResult.titleColor">
                 商品 <span class="text-4xl text-[#CC0000] mx-1">{{ calcResult.winner }}</span> が安いです！
               </h2>
-              <div class="bg-[#CC0000] text-white text-center font-bold py-2 mb-3 text-lg shadow-sm">
-                {{ calcResult.diffText }}
-              </div>
-              <div class="text-[11px] text-center text-gray-700 font-bold mb-3">
-                ({{ calcResult.winner === 'A' ? 'B' : 'A' }}の単価で{{ calcResult.winner }}の分量を買う場合より)
-              </div>
+              <div class="bg-[#CC0000] text-white text-center font-bold py-2 mb-3 text-lg shadow-sm">{{ calcResult.diffText }}</div>
+              <div class="text-[11px] text-center text-gray-700 font-bold mb-3">({{ calcResult.winner === 'A' ? 'B' : 'A' }}の単価で{{ calcResult.winner }}の分量を買う場合より)</div>
               <div class="flex justify-center items-center gap-4 text-sm font-bold text-gray-800">
                 <div class="flex items-center gap-1"><span class="bg-[#D3A975] text-white px-2 py-0.5 rounded text-xs">A</span> @{{ calcResult.uA }}</div>
                 <div class="flex items-center gap-1"><span class="bg-[#D3A975] text-white px-2 py-0.5 rounded text-xs">B</span> @{{ calcResult.uB }}</div>
@@ -207,7 +225,7 @@
         </div>
       </section>
 
-      <!-- 画面3: 設定画面 -->
+      <!-- 画面4: 設定画面 -->
       <transition name="fade">
         <section v-show="activeView === 'settings'" class="p-4 space-y-4">
           <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
@@ -215,8 +233,7 @@
             <div class="space-y-6">
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">大分類タブの並び替え</label>
-                <p class="text-xs text-gray-400 mb-3">↑↓ボタンでタブの表示順を入れ替えます。</p>
-                <div class="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
+                <div class="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden mt-2">
                   <div v-for="(cat, index) in mutableTabOrder" :key="cat" class="flex items-center justify-between p-3 border-b border-gray-100 bg-white">
                     <span class="font-bold text-gray-700">{{ cat }}</span>
                     <div class="flex gap-2">
@@ -254,6 +271,10 @@
         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
         リスト
       </button>
+      <button @click="activeView = 'store'" class="flex-1 flex flex-col items-center justify-center font-bold text-[10px]" :class="activeView === 'store' ? 'text-theme' : 'text-gray-400'">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+        店舗別
+      </button>
       <button @click="activeView = 'calc'" class="flex-1 flex flex-col items-center justify-center font-bold text-[10px]" :class="activeView === 'calc' ? 'text-theme' : 'text-gray-400'">
         <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
         単価比較
@@ -288,14 +309,8 @@
                 <label class="block text-sm font-bold text-gray-700 mb-2">容量</label>
                 <div class="flex">
                   <input type="number" v-model.number="form.capacity" class="w-1/2 bg-white border-2 border-r-0 border-gray-200 rounded-l-2xl p-4 outline-none focus:border-theme text-xl font-bold text-right">
-                  <!-- 単位をドロップダウンに変更 -->
                   <select v-model="form.unit" class="w-1/2 bg-gray-50 border-2 border-gray-200 rounded-r-2xl p-4 outline-none text-sm text-center font-bold">
-                    <option value="g">g</option>
-                    <option value="ml">ml</option>
-                    <option value="個">個</option>
-                    <option value="枚">枚</option>
-                    <option value="本">本</option>
-                    <option value="パック">パック</option>
+                    <option value="g">g</option><option value="ml">ml</option><option value="個">個</option><option value="枚">枚</option><option value="本">本</option><option value="パック">パック</option>
                   </select>
                 </div>
               </div>
@@ -316,7 +331,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getFirestore, collection, onSnapshot, addDoc, setDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { createApp, ref, computed, onMounted, watch } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+    import { createApp, ref, computed, onMounted, watch, nextTick } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
     const firebaseConfig = { apiKey: "AIzaSyByelMKXlBERLyD35nMppiyYt5NCLjHi1U", projectId: "price-compare-db" };
     const db = getFirestore(initializeApp(firebaseConfig));
@@ -327,16 +342,16 @@
         const isAdding = ref(false);
         const records = ref([]);
         const searchQuery = ref('');
-        const storeFilter = ref('all'); // 店舗フィルター用ステート
         const activeMainCat = ref('');
+        const activeStoreTab = ref('イオン'); // 店舗別リスト用
         const expandedGroup = ref('');
         const settings = ref({ tabOrderArray: ['杏珠', '食品', '日用品', 'おかず', 'スイーツ', '肉', '野菜', '乳製品', '米'], discountWelcia: 33, discountAeon: 20 });
         const mutableTabOrder = ref([]);
         
-        const calc = ref({ a: { price: '', cap: '' }, b: { price: '', cap: '' } });
+        const calc = ref({ a: { price: '', cap: '', store: 'その他' }, b: { price: '', cap: '', store: 'その他' } });
         const form = ref({ id: null, mainCategory: '', subCategory: '', productName: '', capacity: '', unit: 'g', price: '', store: '業務スーパー' });
 
-        // スワイプ操作用変数とロジック
+        // スワイプ用
         const touchStartX = ref(0);
         const touchStartY = ref(0);
         
@@ -346,27 +361,30 @@
         };
 
         const handleTouchEnd = (e) => {
-          if (activeView.value !== 'list' || searchQuery.value) return; // 検索中や別画面ではスワイプ無効
-          const touchEndX = e.changedTouches[0].screenX;
-          const touchEndY = e.changedTouches[0].screenY;
+          if (activeView.value !== 'list' || searchQuery.value) return;
+          const diffX = touchStartX.value - e.changedTouches[0].screenX;
+          const diffY = touchStartY.value - e.changedTouches[0].screenY;
           
-          const diffX = touchStartX.value - touchEndX;
-          const diffY = touchStartY.value - touchEndY;
-          
-          // 縦スクロールと区別するため、横の移動が縦の移動より大きく、かつ一定距離以上の場合のみタブ切り替え
           if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
             const cats = sortedMainCategories.value;
             const currentIndex = cats.indexOf(activeMainCat.value);
-            
             if (diffX > 0 && currentIndex < cats.length - 1) {
-              // 左へスワイプ (次のタブへ)
               activeMainCat.value = cats[currentIndex + 1];
             } else if (diffX < 0 && currentIndex > 0) {
-              // 右へスワイプ (前のタブへ)
               activeMainCat.value = cats[currentIndex - 1];
             }
           }
         };
+
+        // タブ切り替え時にスクロール追従
+        watch(activeMainCat, () => {
+          if (activeView.value === 'list') {
+            nextTick(() => {
+              const el = document.getElementById('tab-' + activeMainCat.value);
+              if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            });
+          }
+        });
 
         const getEmoji = (category, product) => {
           const text = ((category || "") + " " + (product || "")).toLowerCase();
@@ -409,6 +427,13 @@
           let p = Number(record.price);
           if (record.store === 'ウエルシア') p = p * (1 - settings.value.discountWelcia / 100);
           if (record.store === 'イオン') p = p * (1 - settings.value.discountAeon / 100);
+          return p;
+        };
+
+        const getCalcEffectivePrice = (itemKey) => {
+          let p = Number(calc.value[itemKey].price);
+          if (calc.value[itemKey].store === 'ウエルシア') p = p * (1 - settings.value.discountWelcia / 100);
+          if (calc.value[itemKey].store === 'イオン') p = p * (1 - settings.value.discountAeon / 100);
           return p;
         };
 
@@ -458,40 +483,47 @@
           }
         };
 
-        const filteredGroups = computed(() => {
-          let targetRecords = records.value;
-          
-          // 店舗フィルターの適用
-          if (storeFilter.value !== 'all') {
-            targetRecords = targetRecords.filter(r => r.store === storeFilter.value);
-          }
-          
-          if (searchQuery.value) {
-            const q = searchQuery.value.toLowerCase();
-            targetRecords = targetRecords.filter(r => (r.subCategory || '').toLowerCase().includes(q) || (r.productName || '').toLowerCase().includes(q));
-          } else {
-            targetRecords = targetRecords.filter(r => (r.mainCategory || '未分類') === activeMainCat.value);
-          }
-
+        // 全グループデータ (店舗別リスト用)
+        const allGroups = computed(() => {
           const map = new Map();
-          targetRecords.forEach(r => {
+          records.value.forEach(r => {
             const sub = r.subCategory || "未設定";
-            if (!map.has(sub)) map.set(sub, { subName: sub, emoji: getEmoji(sub, r.productName), records: [], bestEffectivePrice: Infinity, bestRecord: null });
+            if (!map.has(sub)) map.set(sub, { subName: sub, mainCategory: r.mainCategory, emoji: getEmoji(sub, r.productName), records: [], bestEffectivePrice: Infinity, bestRecord: null });
             const group = map.get(sub);
             const effPrice = getEffectivePrice(r);
             const unitPrice = effPrice / Number(r.capacity || 1);
-            
             r.effectivePrice = effPrice; r.unitPrice = unitPrice;
             group.records.push(r);
-            
             if (unitPrice < group.bestEffectivePrice) {
               group.bestEffectivePrice = unitPrice;
               group.bestRecord = r;
             }
           });
+          return Array.from(map.values());
+        });
 
-          map.forEach(g => g.records.sort((a, b) => a.unitPrice - b.unitPrice));
-          return Array.from(map.values()).sort((a, b) => a.subName.localeCompare(b.subName, 'ja'));
+        // 画面1用リスト
+        const filteredGroups = computed(() => {
+          let list = allGroups.value;
+          if (searchQuery.value) {
+            const q = searchQuery.value.toLowerCase();
+            list = list.filter(g => g.subName.toLowerCase().includes(q) || g.records.some(r => (r.productName||'').toLowerCase().includes(q)));
+          } else {
+            list = list.filter(g => (g.mainCategory || '未分類') === activeMainCat.value);
+          }
+          list.forEach(g => g.records.sort((a, b) => a.unitPrice - b.unitPrice));
+          return list.sort((a, b) => a.subName.localeCompare(b.subName, 'ja'));
+        });
+
+        // 画面2用 (店舗別)
+        const storeBuyList = computed(() => {
+          const list = allGroups.value.filter(g => g.bestRecord && g.bestRecord.store === activeStoreTab.value);
+          const order = settings.value.tabOrderArray || [];
+          return list.sort((a, b) => {
+            const idxA = order.indexOf(a.mainCategory), idxB = order.indexOf(b.mainCategory);
+            if (idxA !== idxB) return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+            return a.subName.localeCompare(b.subName, 'ja');
+          });
         });
 
         const toggleExpand = (name) => { expandedGroup.value = expandedGroup.value === name ? '' : name; };
@@ -501,23 +533,13 @@
           isAdding.value = true;
         };
 
-        // 同カテゴリーへの簡単追加メソッド
         const quickAddToGroup = (group) => {
-          form.value = { 
-            id: null, 
-            mainCategory: activeMainCat.value || '', 
-            subCategory: group.subName, 
-            productName: group.bestRecord.productName || '', 
-            capacity: group.bestRecord.capacity || '', 
-            unit: group.bestRecord.unit || 'g', 
-            price: '', 
-            store: 'その他' 
-          };
+          form.value = { id: null, mainCategory: group.mainCategory || '', subCategory: group.subName, productName: group.bestRecord.productName || '', capacity: group.bestRecord.capacity || '', unit: group.bestRecord.unit || 'g', price: '', store: 'その他' };
           isAdding.value = true;
         };
 
         const registerFromCalc = (itemKey) => {
-          form.value = { id: null, mainCategory: activeMainCat.value || '', subCategory: '', productName: '', capacity: calc.value[itemKey].cap || '', unit: 'g', price: calc.value[itemKey].price || '', store: '業務スーパー' };
+          form.value = { id: null, mainCategory: activeMainCat.value || '', subCategory: '', productName: '', capacity: calc.value[itemKey].cap || '', unit: 'g', price: calc.value[itemKey].price || '', store: calc.value[itemKey].store };
           isAdding.value = true;
         };
 
@@ -533,7 +555,6 @@
             activeMainCat.value = payload.mainCategory;
             expandedGroup.value = payload.subCategory;
             searchQuery.value = '';
-            storeFilter.value = 'all'; // 登録後はフィルターを解除して全体を見せる
             isAdding.value = false;
           } catch(e) { alert("エラー: " + e.message); }
         };
@@ -551,16 +572,18 @@
         const calcValid = computed(() => calc.value.a.price && calc.value.a.cap && calc.value.b.price && calc.value.b.cap);
         const calcResult = computed(() => {
           if (!calcValid.value) return {};
-          const uA = calc.value.a.price / calc.value.a.cap;
-          const uB = calc.value.b.price / calc.value.b.cap;
+          const effA = getCalcEffectivePrice('a');
+          const effB = getCalcEffectivePrice('b');
+          const uA = effA / calc.value.a.cap;
+          const uB = effB / calc.value.b.cap;
           const uAStr = Number(uA).toFixed(3);
           const uBStr = Number(uB).toFixed(3);
           
           if (uA < uB) {
-            const diff = Math.round((uB * calc.value.a.cap) - calc.value.a.price);
+            const diff = Math.round((uB * calc.value.a.cap) - effA);
             return { winner: 'A', titleColor: 'text-gray-800', diffText: `${Math.abs(diff)}円お得！`, uA: uAStr, uB: uBStr };
           } else if (uA > uB) {
-            const diff = Math.round((uA * calc.value.b.cap) - calc.value.b.price);
+            const diff = Math.round((uA * calc.value.b.cap) - effB);
             return { winner: 'B', titleColor: 'text-[#CC0000]', diffText: `${Math.abs(diff)}円お得！`, uA: uAStr, uB: uBStr };
           } else {
             return { winner: '-', titleColor: 'text-gray-800', diffText: `0円`, uA: uAStr, uB: uBStr };
@@ -585,8 +608,8 @@
         });
 
         return { 
-          activeView, isAdding, records, searchQuery, storeFilter, activeMainCat, expandedGroup, calc, form, settings, mutableTabOrder,
-          uniqueRawMainCategories, sortedMainCategories, filteredGroups, toggleExpand, openAddSheet, quickAddToGroup, registerFromCalc, editRecord, saveRecord, deleteRecord, saveSettings, moveTabUp, moveTabDown, handleTouchStart, handleTouchEnd,
+          activeView, isAdding, records, searchQuery, activeMainCat, activeStoreTab, expandedGroup, calc, form, settings, mutableTabOrder,
+          uniqueRawMainCategories, sortedMainCategories, filteredGroups, storeBuyList, toggleExpand, openAddSheet, quickAddToGroup, registerFromCalc, editRecord, saveRecord, deleteRecord, saveSettings, moveTabUp, moveTabDown, handleTouchStart, handleTouchEnd, getCalcEffectivePrice,
           formatUnitPrice, formatYen, getStoreIcon, getStoreTheme, calcResult, calcValid 
         };
       }
