@@ -14,6 +14,8 @@
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     input[type="search"]::-webkit-search-cancel-button { display: none; }
+    /* チェックボックス用のカスタムスタイル */
+    .checkbox-custom:checked + label { text-decoration: line-through; opacity: 0.5; }
   </style>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
@@ -40,8 +42,8 @@
       </div>
 
       <!-- 大分類タブ (リスト画面かつ検索未入力時) -->
-      <div v-show="activeView === 'list' && !searchQuery" class="flex overflow-x-auto hide-scrollbar px-2 bg-black/10" id="tab-container">
-        <button v-for="cat in sortedMainCategories" :key="cat" :id="'tab-' + cat" @click="activeMainCat = cat" 
+      <div v-show="activeView === 'list' && !searchQuery" class="flex overflow-x-auto hide-scrollbar px-2 bg-black/10">
+        <button v-for="cat in sortedMainCategories" :key="cat" :id="'tab-main-' + cat" @click="activeMainCat = cat" 
                 class="px-5 py-3 font-bold whitespace-nowrap border-b-4 transition-all shrink-0"
                 :class="activeMainCat === cat ? 'border-white text-white' : 'border-transparent text-white/70'">
           {{ cat }}
@@ -50,7 +52,7 @@
 
       <!-- 店舗タブ (店舗別リスト画面) -->
       <div v-show="activeView === 'store'" class="flex overflow-x-auto hide-scrollbar px-2 bg-black/10">
-        <button v-for="store in ['ウエルシア', 'イオン', '業務スーパー', 'その他']" :key="store" @click="activeStoreTab = store" 
+        <button v-for="store in ['ウエルシア', 'イオン', '業務スーパー', 'その他']" :key="store" :id="'tab-store-' + store" @click="activeStoreTab = store" 
                 class="px-4 py-3 font-bold whitespace-nowrap border-b-4 transition-all shrink-0"
                 :class="activeStoreTab === store ? 'border-white text-white' : 'border-transparent text-white/70'">
           {{ store }}
@@ -69,18 +71,14 @@
           </div>
 
           <div v-for="group in filteredGroups" :key="group.subName" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            
             <button @click="toggleExpand(group.subName)" class="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
               <div class="flex items-center gap-4 min-w-0">
-                <div class="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-3xl shrink-0 shadow-inner">
-                  {{ group.emoji }}
-                </div>
+                <div class="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-3xl shrink-0 shadow-inner">{{ group.emoji }}</div>
                 <div class="text-left min-w-0">
                   <div class="font-black text-gray-800 text-lg truncate">{{ group.subName }}</div>
                   <div class="text-[11px] text-gray-400 font-bold truncate mt-0.5">
                     {{ group.bestRecord.productName || '商品名未登録' }} <span class="ml-1 text-gray-500 font-medium">({{ group.bestRecord.capacity }}{{ group.bestRecord.unit }})</span>
                   </div>
-                  <!-- 登録数と最安店舗 -->
                   <div class="text-xs font-bold mt-1 flex items-center gap-1.5">
                     <span>最安: <span :class="getStoreTheme(group.bestRecord.store).text">{{ getStoreIcon(group.bestRecord.store) }}{{ group.bestRecord.store }}</span></span>
                     <span class="text-gray-300">|</span>
@@ -96,7 +94,6 @@
               </div>
             </button>
 
-            <!-- 展開時の詳細レコード -->
             <div v-if="expandedGroup === group.subName" class="bg-gray-50/50 p-3 space-y-2 border-t border-gray-100">
               <div v-for="(rec, idx) in group.records" :key="rec.id" class="bg-white p-3 rounded-xl border flex justify-between relative shadow-sm" :class="getStoreTheme(rec.store).border">
                 <div class="pr-16">
@@ -117,16 +114,10 @@
                 </div>
 
                 <div class="absolute right-2 top-0 bottom-0 flex flex-col justify-center gap-2">
-                  <button @click.stop="editRecord(rec)" class="w-7 h-7 flex items-center justify-center bg-blue-50 text-blue-500 rounded-full border border-blue-100">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                  </button>
-                  <button @click.stop="deleteRecord(rec.id)" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-full border border-red-100">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                  </button>
+                  <button @click.stop="editRecord(rec)" class="w-7 h-7 flex items-center justify-center bg-blue-50 text-blue-500 rounded-full border border-blue-100"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                  <button @click.stop="deleteRecord(rec.id)" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-full border border-red-100"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                 </div>
               </div>
-
-              <!-- 簡単追加ボタン -->
               <div class="pt-2 text-center">
                 <button @click.stop="quickAddToGroup(group)" class="text-xs bg-white text-orange-600 px-4 py-2.5 rounded-xl font-bold active:scale-95 border border-orange-200 shadow-sm w-full flex justify-center items-center gap-1">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
@@ -141,24 +132,31 @@
       <!-- 画面2: 店舗別リスト -->
       <transition name="fade">
         <section v-show="activeView === 'store'" class="p-2 space-y-3">
-          <div v-if="storeBuyList.length === 0" class="text-center text-gray-400 py-10 font-bold">
-            この店舗が最安値の商品はありません
-          </div>
+          <div v-if="storeBuyList.length === 0" class="text-center text-gray-400 py-10 font-bold">この店舗が最安値の商品はありません</div>
           
-          <div v-for="group in storeBuyList" :key="group.subName" class="bg-white rounded-2xl p-4 shadow-sm border flex items-center justify-between" :class="getStoreTheme(activeStoreTab).border">
-            <div class="flex items-center gap-4 min-w-0">
-              <div class="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-3xl shrink-0 border border-gray-100">{{ group.emoji }}</div>
-              <div class="text-left min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-bold">{{ group.mainCategory }}</span>
-                  <div class="font-black text-gray-800 text-base truncate">{{ group.subName }}</div>
-                </div>
-                <div class="text-[11px] text-gray-500 font-bold truncate">
-                  {{ group.bestRecord.productName || '商品名未登録' }} ({{ group.bestRecord.capacity }}{{ group.bestRecord.unit }})
+          <div v-for="group in storeBuyList" :key="group.subName" class="bg-white rounded-2xl p-4 shadow-sm border flex items-center gap-3 relative" :class="getStoreTheme(activeStoreTab).border">
+            
+            <!-- かごチェックボックス -->
+            <input type="checkbox" :id="'check-' + group.subName" v-model="cartChecked[group.subName]" class="checkbox-custom hidden">
+            <label :for="'check-' + group.subName" class="flex-1 flex items-center gap-4 cursor-pointer transition-all duration-200 min-w-0 pr-16">
+              
+              <div class="w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors" :class="cartChecked[group.subName] ? 'bg-orange-500 border-orange-500' : 'border-gray-300'">
+                <svg v-show="cartChecked[group.subName]" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+              </div>
+
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-3xl shrink-0 border border-gray-100" :class="{'grayscale': cartChecked[group.subName]}">{{ group.emoji }}</div>
+                <div class="text-left min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-bold">{{ group.mainCategory }}</span>
+                    <div class="font-black text-gray-800 text-base truncate">{{ group.subName }}</div>
+                  </div>
+                  <div class="text-[11px] text-gray-500 font-bold truncate">{{ group.bestRecord.productName || '商品名未登録' }} ({{ group.bestRecord.capacity }}{{ group.bestRecord.unit }})</div>
                 </div>
               </div>
-            </div>
-            <div class="text-right shrink-0 ml-2">
+            </label>
+
+            <div class="absolute right-4 top-1/2 -translate-y-1/2 text-right shrink-0" :class="{'opacity-50': cartChecked[group.subName]}">
               <div class="font-black text-xl leading-none" :class="getStoreTheme(activeStoreTab).text">{{ formatYen(Math.round(group.bestRecord.effectivePrice)) }}</div>
               <div class="text-[10px] text-gray-400 mt-1">{{ formatUnitPrice(group.bestRecord) }}</div>
             </div>
@@ -166,8 +164,9 @@
         </section>
       </transition>
 
-      <!-- 画面3: 単価比較 (割引適用版) -->
+      <!-- 画面3: 単価比較 -->
       <section v-show="activeView === 'calc'" class="p-4 space-y-4">
+        <!-- 商品A -->
         <article class="bg-amber-50 border border-amber-200 rounded-3xl p-4 shadow-sm">
           <div class="flex justify-between items-center mb-3">
             <h3 class="font-black text-amber-800 text-lg">商品 A</h3>
@@ -179,14 +178,16 @@
           </div>
           <div class="mt-3 flex items-center justify-between">
             <select v-model="calc.a.store" class="bg-white border border-amber-200 rounded-lg p-2 text-xs text-amber-800 font-bold outline-none">
-              <option value="その他">割引なし(その他)</option><option value="ウエルシア">ウエルシア</option><option value="イオン">イオン</option>
+              <option value="その他">割引なし</option><option value="ウエルシア">ウエルシア</option><option value="イオン">イオン</option>
             </select>
-            <div v-if="calc.a.price && getCalcEffectivePrice('a') !== calc.a.price" class="text-xs text-red-500 font-bold">
-              実質: {{ Math.round(getCalcEffectivePrice('a')) }}円
+            <div v-if="calc.a.price && getCalcEffectivePrice('a') !== calc.a.price" class="text-xs text-red-500 font-bold text-right">
+              <div>実質: {{ Math.round(getCalcEffectivePrice('a')) }}円</div>
+              <div class="text-[9px] text-gray-500">({{ calc.a.store === 'ウエルシア' ? settings.discountWelcia : settings.discountAeon }}%割引設定を適用)</div>
             </div>
           </div>
         </article>
 
+        <!-- 商品B -->
         <article class="bg-stone-50 border border-stone-200 rounded-3xl p-4 shadow-sm">
           <div class="flex justify-between items-center mb-3">
             <h3 class="font-black text-stone-700 text-lg">商品 B</h3>
@@ -198,10 +199,11 @@
           </div>
           <div class="mt-3 flex items-center justify-between">
             <select v-model="calc.b.store" class="bg-white border border-stone-200 rounded-lg p-2 text-xs text-stone-700 font-bold outline-none">
-              <option value="その他">割引なし(その他)</option><option value="ウエルシア">ウエルシア</option><option value="イオン">イオン</option>
+              <option value="その他">割引なし</option><option value="ウエルシア">ウエルシア</option><option value="イオン">イオン</option>
             </select>
-            <div v-if="calc.b.price && getCalcEffectivePrice('b') !== calc.b.price" class="text-xs text-red-500 font-bold">
-              実質: {{ Math.round(getCalcEffectivePrice('b')) }}円
+            <div v-if="calc.b.price && getCalcEffectivePrice('b') !== calc.b.price" class="text-xs text-red-500 font-bold text-right">
+              <div>実質: {{ Math.round(getCalcEffectivePrice('b')) }}円</div>
+              <div class="text-[9px] text-gray-500">({{ calc.b.store === 'ウエルシア' ? settings.discountWelcia : settings.discountAeon }}%割引設定を適用)</div>
             </div>
           </div>
         </article>
@@ -309,9 +311,11 @@
                 <label class="block text-sm font-bold text-gray-700 mb-2">容量</label>
                 <div class="flex">
                   <input type="number" v-model.number="form.capacity" class="w-1/2 bg-white border-2 border-r-0 border-gray-200 rounded-l-2xl p-4 outline-none focus:border-theme text-xl font-bold text-right">
-                  <select v-model="form.unit" class="w-1/2 bg-gray-50 border-2 border-gray-200 rounded-r-2xl p-4 outline-none text-sm text-center font-bold">
+                  <!-- 選択＆手入力可能な単位 -->
+                  <input type="text" v-model="form.unit" list="unit-list" class="w-1/2 bg-gray-50 border-2 border-gray-200 rounded-r-2xl p-4 outline-none text-sm text-center font-bold" placeholder="単位">
+                  <datalist id="unit-list">
                     <option value="g">g</option><option value="ml">ml</option><option value="個">個</option><option value="枚">枚</option><option value="本">本</option><option value="パック">パック</option>
-                  </select>
+                  </datalist>
                 </div>
               </div>
             </div>
@@ -343,10 +347,11 @@
         const records = ref([]);
         const searchQuery = ref('');
         const activeMainCat = ref('');
-        const activeStoreTab = ref('イオン'); // 店舗別リスト用
+        const activeStoreTab = ref('ウエルシア'); 
         const expandedGroup = ref('');
         const settings = ref({ tabOrderArray: ['杏珠', '食品', '日用品', 'おかず', 'スイーツ', '肉', '野菜', '乳製品', '米'], discountWelcia: 33, discountAeon: 20 });
         const mutableTabOrder = ref([]);
+        const cartChecked = ref({}); // 店舗別リストのかごチェック状態保持
         
         const calc = ref({ a: { price: '', cap: '', store: 'その他' }, b: { price: '', cap: '', store: 'その他' } });
         const form = ref({ id: null, mainCategory: '', subCategory: '', productName: '', capacity: '', unit: 'g', price: '', store: '業務スーパー' });
@@ -354,6 +359,7 @@
         // スワイプ用
         const touchStartX = ref(0);
         const touchStartY = ref(0);
+        const storeTabs = ['ウエルシア', 'イオン', '業務スーパー', 'その他'];
         
         const handleTouchStart = (e) => {
           touchStartX.value = e.changedTouches[0].screenX;
@@ -361,17 +367,31 @@
         };
 
         const handleTouchEnd = (e) => {
-          if (activeView.value !== 'list' || searchQuery.value) return;
+          if (searchQuery.value) return; // 検索中はスワイプ無効
+          
           const diffX = touchStartX.value - e.changedTouches[0].screenX;
           const diffY = touchStartY.value - e.changedTouches[0].screenY;
           
-          if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
-            const cats = sortedMainCategories.value;
-            const currentIndex = cats.indexOf(activeMainCat.value);
-            if (diffX > 0 && currentIndex < cats.length - 1) {
-              activeMainCat.value = cats[currentIndex + 1];
-            } else if (diffX < 0 && currentIndex > 0) {
-              activeMainCat.value = cats[currentIndex - 1];
+          if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+            
+            // リスト画面のスワイプ処理
+            if (activeView.value === 'list') {
+              const cats = sortedMainCategories.value;
+              const currentIndex = cats.indexOf(activeMainCat.value);
+              if (diffX > 0 && currentIndex < cats.length - 1) {
+                activeMainCat.value = cats[currentIndex + 1];
+              } else if (diffX < 0 && currentIndex > 0) {
+                activeMainCat.value = cats[currentIndex - 1];
+              }
+            } 
+            // 店舗別画面のスワイプ処理
+            else if (activeView.value === 'store') {
+              const currentIndex = storeTabs.indexOf(activeStoreTab.value);
+              if (diffX > 0 && currentIndex < storeTabs.length - 1) {
+                activeStoreTab.value = storeTabs[currentIndex + 1];
+              } else if (diffX < 0 && currentIndex > 0) {
+                activeStoreTab.value = storeTabs[currentIndex - 1];
+              }
             }
           }
         };
@@ -380,7 +400,16 @@
         watch(activeMainCat, () => {
           if (activeView.value === 'list') {
             nextTick(() => {
-              const el = document.getElementById('tab-' + activeMainCat.value);
+              const el = document.getElementById('tab-main-' + activeMainCat.value);
+              if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            });
+          }
+        });
+
+        watch(activeStoreTab, () => {
+          if (activeView.value === 'store') {
+            nextTick(() => {
+              const el = document.getElementById('tab-store-' + activeStoreTab.value);
               if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
             });
           }
@@ -483,7 +512,6 @@
           }
         };
 
-        // 全グループデータ (店舗別リスト用)
         const allGroups = computed(() => {
           const map = new Map();
           records.value.forEach(r => {
@@ -502,7 +530,6 @@
           return Array.from(map.values());
         });
 
-        // 画面1用リスト
         const filteredGroups = computed(() => {
           let list = allGroups.value;
           if (searchQuery.value) {
@@ -515,7 +542,6 @@
           return list.sort((a, b) => a.subName.localeCompare(b.subName, 'ja'));
         });
 
-        // 画面2用 (店舗別)
         const storeBuyList = computed(() => {
           const list = allGroups.value.filter(g => g.bestRecord && g.bestRecord.store === activeStoreTab.value);
           const order = settings.value.tabOrderArray || [];
@@ -608,7 +634,7 @@
         });
 
         return { 
-          activeView, isAdding, records, searchQuery, activeMainCat, activeStoreTab, expandedGroup, calc, form, settings, mutableTabOrder,
+          activeView, isAdding, records, searchQuery, activeMainCat, activeStoreTab, expandedGroup, calc, form, settings, mutableTabOrder, cartChecked,
           uniqueRawMainCategories, sortedMainCategories, filteredGroups, storeBuyList, toggleExpand, openAddSheet, quickAddToGroup, registerFromCalc, editRecord, saveRecord, deleteRecord, saveSettings, moveTabUp, moveTabDown, handleTouchStart, handleTouchEnd, getCalcEffectivePrice,
           formatUnitPrice, formatYen, getStoreIcon, getStoreTheme, calcResult, calcValid 
         };
