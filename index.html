@@ -14,7 +14,6 @@
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     input[type="search"]::-webkit-search-cancel-button { display: none; }
-    /* チェックボックス用のカスタムスタイル */
     .checkbox-custom:checked + label { text-decoration: line-through; opacity: 0.5; }
   </style>
 </head>
@@ -27,7 +26,7 @@
         {{ activeView === 'list' ? '底値リスト' : (activeView === 'store' ? '店舗別 買うべきリスト' : (activeView === 'calc' ? '単価比較' : '設定')) }}
       </div>
       
-      <!-- 検索バー (リスト画面のみ) -->
+      <!-- 検索バー -->
       <div v-show="activeView === 'list'" class="px-3 pb-2 pt-1 bg-theme">
         <div class="relative">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
@@ -41,7 +40,7 @@
         </div>
       </div>
 
-      <!-- 大分類タブ (リスト画面かつ検索未入力時) -->
+      <!-- 大分類タブ -->
       <div v-show="activeView === 'list' && !searchQuery" class="flex overflow-x-auto hide-scrollbar px-2 bg-black/10">
         <button v-for="cat in sortedMainCategories" :key="cat" :id="'tab-main-' + cat" @click="activeMainCat = cat" 
                 class="px-5 py-3 font-bold whitespace-nowrap border-b-4 transition-all shrink-0"
@@ -50,18 +49,18 @@
         </button>
       </div>
 
-      <!-- 店舗タブ (店舗別リスト画面) -->
+      <!-- 店舗タブ -->
       <div v-show="activeView === 'store'" class="flex overflow-x-auto hide-scrollbar px-2 bg-black/10">
-        <button v-for="store in ['ウエルシア', 'イオン', '業務スーパー', 'その他']" :key="store" :id="'tab-store-' + store" @click="activeStoreTab = store" 
+        <button v-for="store in settings.stores" :key="store.name" :id="'tab-store-' + store.name" @click="activeStoreTab = store.name" 
                 class="px-4 py-3 font-bold whitespace-nowrap border-b-4 transition-all shrink-0"
-                :class="activeStoreTab === store ? 'border-white text-white' : 'border-transparent text-white/70'">
-          {{ store }}
+                :class="activeStoreTab === store.name ? 'border-white text-white' : 'border-transparent text-white/70'">
+          {{ store.name }}
         </button>
       </div>
     </header>
 
-    <!-- メインコンテンツ (スワイプ検知) -->
-    <main class="flex-1 overflow-y-auto relative pb-28" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+    <!-- メインコンテンツ (スワイプ検知 & スクロールリセット用ref) -->
+    <main ref="mainRef" class="flex-1 overflow-y-auto relative pb-28" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
       
       <!-- 画面1: 小分類リスト -->
       <transition name="fade">
@@ -88,7 +87,7 @@
               </div>
               <div class="text-right shrink-0 ml-2">
                 <div class="font-black text-xl text-gray-800 leading-none">{{ formatYen(Math.round(group.bestRecord.effectivePrice)) }}</div>
-                <div v-if="group.bestRecord.store === 'ウエルシア' || group.bestRecord.store === 'イオン'" class="text-[10px] text-gray-400 mt-1 line-through">
+                <div v-if="getStoreDiscount(group.bestRecord.store) > 0" class="text-[10px] text-gray-400 mt-1 line-through">
                   店頭: {{ formatYen(group.bestRecord.price) }}
                 </div>
               </div>
@@ -103,13 +102,12 @@
                   </div>
                   <div class="text-[11px] text-gray-600 font-bold mt-1">{{ rec.productName || '商品名未設定' }}</div>
                   <div class="text-[11px] text-gray-500">{{ rec.capacity }}{{ rec.unit }}</div>
-                  <div v-if="rec.store === 'ウエルシア'" class="text-[10px] text-red-500 font-bold mt-1">({{ settings.discountWelcia }}%割引後)</div>
-                  <div v-else-if="rec.store === 'イオン'" class="text-[10px] text-red-500 font-bold mt-1">({{ settings.discountAeon }}%割引後)</div>
+                  <div v-if="getStoreDiscount(rec.store) > 0" class="text-[10px] text-red-500 font-bold mt-1">({{ getStoreDiscount(rec.store) }}%割引後)</div>
                 </div>
                 
                 <div class="text-right flex flex-col justify-center">
                   <div class="font-black text-gray-800 text-lg leading-none">{{ formatYen(Math.round(rec.effectivePrice)) }}</div>
-                  <div v-if="rec.store === 'ウエルシア' || rec.store === 'イオン'" class="text-[10px] text-gray-400 mt-1 line-through">店頭: {{ formatYen(rec.price) }}</div>
+                  <div v-if="getStoreDiscount(rec.store) > 0" class="text-[10px] text-gray-400 mt-1 line-through">店頭: {{ formatYen(rec.price) }}</div>
                   <div class="text-[11px] text-gray-500 font-medium mt-1">{{ formatUnitPrice(rec) }}</div>
                 </div>
 
@@ -136,7 +134,6 @@
           
           <div v-for="group in storeBuyList" :key="group.subName" class="bg-white rounded-2xl p-4 shadow-sm border flex items-center gap-3 relative" :class="getStoreTheme(activeStoreTab).border">
             
-            <!-- かごチェックボックス -->
             <input type="checkbox" :id="'check-' + group.subName" v-model="cartChecked[group.subName]" class="checkbox-custom hidden">
             <label :for="'check-' + group.subName" class="flex-1 flex items-center gap-4 cursor-pointer transition-all duration-200 min-w-0 pr-16">
               
@@ -166,7 +163,11 @@
 
       <!-- 画面3: 単価比較 -->
       <section v-show="activeView === 'calc'" class="p-4 space-y-4">
-        <!-- 商品A -->
+        <!-- リセットボタン追加 -->
+        <div class="flex justify-end">
+          <button @click="resetCalc" class="text-xs bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full font-bold shadow-sm active:scale-95">リセット</button>
+        </div>
+
         <article class="bg-amber-50 border border-amber-200 rounded-3xl p-4 shadow-sm">
           <div class="flex justify-between items-center mb-3">
             <h3 class="font-black text-amber-800 text-lg">商品 A</h3>
@@ -178,16 +179,15 @@
           </div>
           <div class="mt-3 flex items-center justify-between">
             <select v-model="calc.a.store" class="bg-white border border-amber-200 rounded-lg p-2 text-xs text-amber-800 font-bold outline-none">
-              <option value="その他">割引なし</option><option value="ウエルシア">ウエルシア</option><option value="イオン">イオン</option>
+              <option v-for="store in settings.stores" :key="store.name" :value="store.name">{{ store.name }}</option>
             </select>
             <div v-if="calc.a.price && getCalcEffectivePrice('a') !== calc.a.price" class="text-xs text-red-500 font-bold text-right">
               <div>実質: {{ Math.round(getCalcEffectivePrice('a')) }}円</div>
-              <div class="text-[9px] text-gray-500">({{ calc.a.store === 'ウエルシア' ? settings.discountWelcia : settings.discountAeon }}%割引設定を適用)</div>
+              <div class="text-[9px] text-gray-500">({{ getStoreDiscount(calc.a.store) }}%割引設定を適用)</div>
             </div>
           </div>
         </article>
 
-        <!-- 商品B -->
         <article class="bg-stone-50 border border-stone-200 rounded-3xl p-4 shadow-sm">
           <div class="flex justify-between items-center mb-3">
             <h3 class="font-black text-stone-700 text-lg">商品 B</h3>
@@ -199,11 +199,11 @@
           </div>
           <div class="mt-3 flex items-center justify-between">
             <select v-model="calc.b.store" class="bg-white border border-stone-200 rounded-lg p-2 text-xs text-stone-700 font-bold outline-none">
-              <option value="その他">割引なし</option><option value="ウエルシア">ウエルシア</option><option value="イオン">イオン</option>
+              <option v-for="store in settings.stores" :key="store.name" :value="store.name">{{ store.name }}</option>
             </select>
             <div v-if="calc.b.price && getCalcEffectivePrice('b') !== calc.b.price" class="text-xs text-red-500 font-bold text-right">
               <div>実質: {{ Math.round(getCalcEffectivePrice('b')) }}円</div>
-              <div class="text-[9px] text-gray-500">({{ calc.b.store === 'ウエルシア' ? settings.discountWelcia : settings.discountAeon }}%割引設定を適用)</div>
+              <div class="text-[9px] text-gray-500">({{ getStoreDiscount(calc.b.store) }}%割引設定を適用)</div>
             </div>
           </div>
         </article>
@@ -232,7 +232,9 @@
         <section v-show="activeView === 'settings'" class="p-4 space-y-4">
           <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
             <h2 class="font-black text-gray-800 text-xl mb-4 border-b pb-2">アプリ設定</h2>
+            
             <div class="space-y-6">
+              <!-- 大分類タブの並び替え -->
               <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">大分類タブの並び替え</label>
                 <div class="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden mt-2">
@@ -245,14 +247,26 @@
                   </div>
                 </div>
               </div>
+
+              <!-- 店舗と割引率の設定 -->
               <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">ウエルシアの割引率 (%)</label>
-                <input type="number" v-model.number="settings.discountWelcia" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-theme text-lg font-bold">
+                <label class="block text-sm font-bold text-gray-700 mb-1">店舗と割引率の設定</label>
+                <p class="text-[11px] text-gray-400 mb-2">お店の名前と、計算時の実質割引率(%)を設定します。</p>
+                <div class="space-y-2">
+                  <div v-for="(store, idx) in settings.stores" :key="idx" class="flex items-center gap-2">
+                    <input type="text" v-model="store.name" class="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2.5 outline-none font-bold text-sm" placeholder="店舗名">
+                    <div class="relative w-20">
+                      <input type="number" v-model.number="store.discount" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 pr-6 outline-none font-bold text-sm text-right" placeholder="0">
+                      <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                    </div>
+                    <button @click="removeStore(idx)" class="w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 rounded-lg border border-red-100 shadow-sm active:scale-95">✕</button>
+                  </div>
+                </div>
+                <button @click="addStore" class="mt-3 w-full bg-gray-100 text-gray-600 font-bold text-sm py-3 rounded-xl border border-gray-200 active:scale-95 shadow-sm">
+                  ＋ 店舗を追加する
+                </button>
               </div>
-              <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">イオンの割引率 (%)</label>
-                <input type="number" v-model.number="settings.discountAeon" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-theme text-lg font-bold">
-              </div>
+
               <button @click="saveSettings" class="w-full bg-gray-800 text-white font-bold text-lg py-4 rounded-xl mt-4 shadow active:scale-95 transition-transform">
                 設定を保存する
               </button>
@@ -308,21 +322,20 @@
                 <input type="number" v-model.number="form.price" class="w-full bg-white border-2 border-gray-200 rounded-2xl p-4 outline-none focus:border-theme text-2xl font-black text-right text-red-500">
               </div>
               <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">容量</label>
+                <label class="block text-sm font-bold text-gray-700 mb-2">容量と単位</label>
                 <div class="flex">
                   <input type="number" v-model.number="form.capacity" class="w-1/2 bg-white border-2 border-r-0 border-gray-200 rounded-l-2xl p-4 outline-none focus:border-theme text-xl font-bold text-right">
-                  <!-- 選択＆手入力可能な単位 -->
-                  <input type="text" v-model="form.unit" list="unit-list" class="w-1/2 bg-gray-50 border-2 border-gray-200 rounded-r-2xl p-4 outline-none text-sm text-center font-bold" placeholder="単位">
-                  <datalist id="unit-list">
-                    <option value="g">g</option><option value="ml">ml</option><option value="個">個</option><option value="枚">枚</option><option value="本">本</option><option value="パック">パック</option>
-                  </datalist>
+                  <select v-model="form.unitSelect" class="bg-gray-50 border-2 border-gray-200 p-4 outline-none text-sm text-center font-bold" :class="form.unitSelect === 'custom' ? 'w-1/4 border-r-0' : 'w-1/2 rounded-r-2xl'">
+                    <option value="g">g</option><option value="ml">ml</option><option value="個">個</option><option value="枚">枚</option><option value="本">本</option><option value="パック">パック</option><option value="custom">手入力</option>
+                  </select>
+                  <input v-if="form.unitSelect === 'custom'" type="text" v-model="form.customUnit" class="w-1/4 bg-white border-2 border-gray-200 rounded-r-2xl p-4 outline-none text-sm font-bold text-center" placeholder="単位">
                 </div>
               </div>
             </div>
             <div>
               <label class="block text-sm font-bold text-gray-700 mb-2">購入店舗</label>
               <select v-model="form.store" class="w-full bg-white border-2 border-gray-200 rounded-2xl p-4 outline-none focus:border-theme text-lg font-bold appearance-none">
-                <option value="業務スーパー">業務スーパー</option><option value="ウエルシア">ウエルシア</option><option value="イオン">イオン</option><option value="その他">その他</option>
+                <option v-for="store in settings.stores" :key="store.name" :value="store.name">{{ store.name }}</option>
               </select>
             </div>
             <button @click="saveRecord" class="w-full bg-theme text-white font-black text-xl py-5 rounded-2xl mt-4 shadow-lg active:scale-95 transition-transform">{{ form.id ? '更新する' : '登録する' }}</button>
@@ -343,23 +356,33 @@
     createApp({
       setup() {
         const activeView = ref('list');
+        const mainRef = ref(null); // スクロールリセット用
         const isAdding = ref(false);
         const records = ref([]);
         const searchQuery = ref('');
         const activeMainCat = ref('');
-        const activeStoreTab = ref('ウエルシア'); 
+        const activeStoreTab = ref(''); 
         const expandedGroup = ref('');
-        const settings = ref({ tabOrderArray: ['杏珠', '食品', '日用品', 'おかず', 'スイーツ', '肉', '野菜', '乳製品', '米'], discountWelcia: 33, discountAeon: 20 });
+        const settings = ref({ 
+          tabOrderArray: ['杏珠', '食品', '日用品', 'おかず', 'スイーツ', '肉', '野菜', '乳製品', '米'], 
+          stores: [] 
+        });
         const mutableTabOrder = ref([]);
-        const cartChecked = ref({}); // 店舗別リストのかごチェック状態保持
+        const cartChecked = ref({});
         
         const calc = ref({ a: { price: '', cap: '', store: 'その他' }, b: { price: '', cap: '', store: 'その他' } });
-        const form = ref({ id: null, mainCategory: '', subCategory: '', productName: '', capacity: '', unit: 'g', price: '', store: '業務スーパー' });
+        const form = ref({ id: null, mainCategory: '', subCategory: '', productName: '', capacity: '', unitSelect: 'g', customUnit: '', price: '', store: '業務スーパー' });
 
-        // スワイプ用
+        const resetCalc = () => {
+          calc.value = { a: { price: '', cap: '', store: 'その他' }, b: { price: '', cap: '', store: 'その他' } };
+        };
+
+        const scrollToTop = () => {
+          if (mainRef.value) mainRef.value.scrollTop = 0;
+        };
+
         const touchStartX = ref(0);
         const touchStartY = ref(0);
-        const storeTabs = ['ウエルシア', 'イオン', '業務スーパー', 'その他'];
         
         const handleTouchStart = (e) => {
           touchStartX.value = e.changedTouches[0].screenX;
@@ -367,14 +390,12 @@
         };
 
         const handleTouchEnd = (e) => {
-          if (searchQuery.value) return; // 検索中はスワイプ無効
+          if (searchQuery.value) return; 
           
           const diffX = touchStartX.value - e.changedTouches[0].screenX;
           const diffY = touchStartY.value - e.changedTouches[0].screenY;
           
           if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-            
-            // リスト画面のスワイプ処理
             if (activeView.value === 'list') {
               const cats = sortedMainCategories.value;
               const currentIndex = cats.indexOf(activeMainCat.value);
@@ -383,9 +404,8 @@
               } else if (diffX < 0 && currentIndex > 0) {
                 activeMainCat.value = cats[currentIndex - 1];
               }
-            } 
-            // 店舗別画面のスワイプ処理
-            else if (activeView.value === 'store') {
+            } else if (activeView.value === 'store') {
+              const storeTabs = settings.value.stores.map(s => s.name);
               const currentIndex = storeTabs.indexOf(activeStoreTab.value);
               if (diffX > 0 && currentIndex < storeTabs.length - 1) {
                 activeStoreTab.value = storeTabs[currentIndex + 1];
@@ -396,9 +416,9 @@
           }
         };
 
-        // タブ切り替え時にスクロール追従
         watch(activeMainCat, () => {
           if (activeView.value === 'list') {
+            scrollToTop();
             nextTick(() => {
               const el = document.getElementById('tab-main-' + activeMainCat.value);
               if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
@@ -408,11 +428,16 @@
 
         watch(activeStoreTab, () => {
           if (activeView.value === 'store') {
+            scrollToTop();
             nextTick(() => {
               const el = document.getElementById('tab-store-' + activeStoreTab.value);
               if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
             });
           }
+        });
+
+        watch(activeView, () => {
+          scrollToTop();
         });
 
         const getEmoji = (category, product) => {
@@ -438,31 +463,38 @@
 
         const formatYen = (val) => val ? Number(val).toLocaleString() + '円' : '0円';
 
-        const getStoreTheme = (store) => {
-          if (store === 'イオン') return { text: 'text-fuchsia-700', border: 'border-fuchsia-200' };
-          if (store === 'ウエルシア') return { text: 'text-blue-700', border: 'border-blue-200' };
-          if (store === '業務スーパー') return { text: 'text-green-700', border: 'border-green-200' };
-          return { text: 'text-gray-700', border: 'border-gray-200' };
+        const getStoreTheme = (storeName) => {
+          if (storeName === 'イオン') return { text: 'text-fuchsia-700', border: 'border-fuchsia-200' };
+          if (storeName === 'ウエルシア') return { text: 'text-blue-700', border: 'border-blue-200' };
+          if (storeName === '業務スーパー') return { text: 'text-green-700', border: 'border-green-200' };
+          if (storeName === 'その他') return { text: 'text-gray-700', border: 'border-gray-200' };
+          return { text: 'text-teal-700', border: 'border-teal-200' };
         };
 
-        const getStoreIcon = (store) => {
-          if (store === 'イオン') return '🟣';
-          if (store === 'ウエルシア') return '🔵';
-          if (store === '業務スーパー') return '🟢';
-          return '⚪';
+        const getStoreIcon = (storeName) => {
+          if (storeName === 'イオン') return '🟣';
+          if (storeName === 'ウエルシア') return '🔵';
+          if (storeName === '業務スーパー') return '🟢';
+          if (storeName === 'その他') return '⚪';
+          return '🟡';
+        };
+
+        const getStoreDiscount = (storeName) => {
+          const store = settings.value.stores.find(s => s.name === storeName);
+          return store ? store.discount : 0;
         };
 
         const getEffectivePrice = (record) => {
           let p = Number(record.price);
-          if (record.store === 'ウエルシア') p = p * (1 - settings.value.discountWelcia / 100);
-          if (record.store === 'イオン') p = p * (1 - settings.value.discountAeon / 100);
+          const discount = getStoreDiscount(record.store);
+          if (discount > 0) p = p * (1 - discount / 100);
           return p;
         };
 
         const getCalcEffectivePrice = (itemKey) => {
           let p = Number(calc.value[itemKey].price);
-          if (calc.value[itemKey].store === 'ウエルシア') p = p * (1 - settings.value.discountWelcia / 100);
-          if (calc.value[itemKey].store === 'イオン') p = p * (1 - settings.value.discountAeon / 100);
+          const discount = getStoreDiscount(calc.value[itemKey].store);
+          if (discount > 0) p = p * (1 - discount / 100);
           return p;
         };
 
@@ -512,6 +544,9 @@
           }
         };
 
+        const addStore = () => settings.value.stores.push({ name: '', discount: 0 });
+        const removeStore = (idx) => settings.value.stores.splice(idx, 1);
+
         const allGroups = computed(() => {
           const map = new Map();
           records.value.forEach(r => {
@@ -555,26 +590,40 @@
         const toggleExpand = (name) => { expandedGroup.value = expandedGroup.value === name ? '' : name; };
 
         const openAddSheet = () => {
-          form.value = { id: null, mainCategory: activeMainCat.value || '', subCategory: searchQuery.value || '', productName: '', capacity: '', unit: 'g', price: '', store: '業務スーパー' };
+          form.value = { id: null, mainCategory: activeMainCat.value || '', subCategory: searchQuery.value || '', productName: '', capacity: '', unitSelect: 'g', customUnit: '', price: '', store: settings.value.stores[0]?.name || '業務スーパー' };
           isAdding.value = true;
         };
 
         const quickAddToGroup = (group) => {
-          form.value = { id: null, mainCategory: group.mainCategory || '', subCategory: group.subName, productName: group.bestRecord.productName || '', capacity: group.bestRecord.capacity || '', unit: group.bestRecord.unit || 'g', price: '', store: 'その他' };
+          form.value = { id: null, mainCategory: group.mainCategory || '', subCategory: group.subName, productName: group.bestRecord.productName || '', capacity: group.bestRecord.capacity || '', unitSelect: 'g', customUnit: '', price: '', store: settings.value.stores[0]?.name || 'その他' };
           isAdding.value = true;
         };
 
         const registerFromCalc = (itemKey) => {
-          form.value = { id: null, mainCategory: activeMainCat.value || '', subCategory: '', productName: '', capacity: calc.value[itemKey].cap || '', unit: 'g', price: calc.value[itemKey].price || '', store: calc.value[itemKey].store };
+          form.value = { id: null, mainCategory: activeMainCat.value || '', subCategory: '', productName: '', capacity: calc.value[itemKey].cap || '', unitSelect: 'g', customUnit: '', price: calc.value[itemKey].price || '', store: calc.value[itemKey].store };
           isAdding.value = true;
         };
 
-        const editRecord = (rec) => { form.value = { ...rec }; isAdding.value = true; };
+        const editRecord = (rec) => {
+          const standardUnits = ['g', 'ml', '個', '枚', '本', 'パック'];
+          form.value = { ...rec };
+          if (standardUnits.includes(rec.unit)) {
+            form.value.unitSelect = rec.unit;
+            form.value.customUnit = '';
+          } else {
+            form.value.unitSelect = 'custom';
+            form.value.customUnit = rec.unit || '';
+          }
+          isAdding.value = true; 
+        };
 
         const saveRecord = async () => {
           if (!form.value.subCategory || !form.value.price || !form.value.capacity) return alert("小分類・価格・容量は必須です");
+          const finalUnit = form.value.unitSelect === 'custom' ? form.value.customUnit : form.value.unitSelect;
+          if (!finalUnit) return alert("単位を入力してください");
+          
           try {
-            const payload = { mainCategory: form.value.mainCategory || '未分類', subCategory: form.value.subCategory, productName: form.value.productName || '', capacity: Number(form.value.capacity), unit: form.value.unit || 'g', price: Number(form.value.price), store: form.value.store };
+            const payload = { mainCategory: form.value.mainCategory || '未分類', subCategory: form.value.subCategory, productName: form.value.productName || '', capacity: Number(form.value.capacity), unit: finalUnit, price: Number(form.value.price), store: form.value.store };
             if (form.value.id) await setDoc(doc(db, "price_records", form.value.id), payload);
             else await addDoc(collection(db, "price_records"), payload);
             
@@ -588,6 +637,7 @@
         const deleteRecord = async (id) => { if(confirm("削除しますか？")) await deleteDoc(doc(db, "price_records", id)); };
 
         const saveSettings = async () => {
+          settings.value.stores = settings.value.stores.filter(s => s.name && s.name.trim() !== '');
           settings.value.tabOrderArray = [...mutableTabOrder.value];
           try {
             await setDoc(doc(db, "settings", "config"), settings.value);
@@ -621,7 +671,26 @@
             if (docSnap.exists()) {
                const data = docSnap.data();
                if (data.tabOrderString && !data.tabOrderArray) data.tabOrderArray = data.tabOrderString.split(',').map(s=>s.trim());
+               
+               if (!data.stores || data.stores.length === 0) {
+                 data.stores = [
+                   { name: 'ウエルシア', discount: data.discountWelcia !== undefined ? data.discountWelcia : 33 },
+                   { name: 'イオン', discount: data.discountAeon !== undefined ? data.discountAeon : 20 },
+                   { name: '業務スーパー', discount: 0 },
+                   { name: 'その他', discount: 0 }
+                 ];
+               }
                settings.value = { ...settings.value, ...data };
+            } else {
+               settings.value.stores = [
+                 { name: 'ウエルシア', discount: 33 },
+                 { name: 'イオン', discount: 20 },
+                 { name: '業務スーパー', discount: 0 },
+                 { name: 'その他', discount: 0 }
+               ];
+            }
+            if (!activeStoreTab.value && settings.value.stores.length > 0) {
+              activeStoreTab.value = settings.value.stores[0].name;
             }
           });
           onSnapshot(collection(db, "price_records"), (snapshot) => {
@@ -634,8 +703,8 @@
         });
 
         return { 
-          activeView, isAdding, records, searchQuery, activeMainCat, activeStoreTab, expandedGroup, calc, form, settings, mutableTabOrder, cartChecked,
-          uniqueRawMainCategories, sortedMainCategories, filteredGroups, storeBuyList, toggleExpand, openAddSheet, quickAddToGroup, registerFromCalc, editRecord, saveRecord, deleteRecord, saveSettings, moveTabUp, moveTabDown, handleTouchStart, handleTouchEnd, getCalcEffectivePrice,
+          activeView, mainRef, isAdding, records, searchQuery, activeMainCat, activeStoreTab, expandedGroup, calc, form, settings, mutableTabOrder, cartChecked,
+          uniqueRawMainCategories, sortedMainCategories, filteredGroups, storeBuyList, toggleExpand, openAddSheet, quickAddToGroup, registerFromCalc, editRecord, saveRecord, deleteRecord, saveSettings, moveTabUp, moveTabDown, handleTouchStart, handleTouchEnd, getCalcEffectivePrice, resetCalc, getStoreDiscount, addStore, removeStore,
           formatUnitPrice, formatYen, getStoreIcon, getStoreTheme, calcResult, calcValid 
         };
       }
