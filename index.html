@@ -7,108 +7,416 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     [v-cloak] { display: none; }
+    .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+    .fade-enter-from, .fade-leave-to { opacity: 0; }
+    .slide-enter-active, .slide-leave-active { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .slide-enter-from { transform: translateY(100%); }
+    .slide-leave-to { transform: translateY(100%); }
+    /* 今回のテーマカラー（オレンジベース） */
     .bg-theme { background-color: #F59E0B; }
     .text-theme { color: #F59E0B; }
+    /* 横スクロールバー非表示 */
     .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
-  <div id="app" v-cloak class="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative flex flex-col">
+  <div id="app" v-cloak class="max-w-md mx-auto bg-[#F4F4F9] min-h-screen shadow-2xl relative flex flex-col">
     
-    <!-- 大分類タブ -->
+    <!-- ヘッダー＆大分類タブ -->
     <header class="bg-theme text-white sticky top-0 z-20 shadow-md">
-      <div class="flex overflow-x-auto hide-scrollbar px-2">
-        <button v-for="cat in mainCategories" :key="cat" @click="activeMainCat = cat" 
-                class="px-5 py-4 font-black whitespace-nowrap border-b-4 transition-all"
-                :class="activeMainCat === cat ? 'border-white' : 'border-transparent opacity-70'">
+      <div class="px-4 py-3 text-center font-bold text-lg tracking-wide">
+        {{ activeView === 'list' ? '底値リスト' : '単価比較' }}
+      </div>
+      
+      <!-- リスト画面のみ大分類タブを表示 -->
+      <div v-show="activeView === 'list'" class="flex overflow-x-auto hide-scrollbar px-2 bg-black/10">
+        <button v-for="cat in uniqueMainCategories" :key="cat" @click="activeMainCat = cat" 
+                class="px-5 py-3 font-bold whitespace-nowrap border-b-4 transition-all"
+                :class="activeMainCat === cat ? 'border-white text-white' : 'border-transparent text-white/70'">
           {{ cat }}
         </button>
       </div>
     </header>
 
-    <main class="flex-1 overflow-y-auto pb-24 bg-[#F4F4F9]">
-      <div class="p-2 space-y-px">
-        <!-- 小分類リスト -->
-        <div v-for="group in filteredGroups" :key="group.subName" class="bg-white border-b border-gray-100">
-          <button @click="toggleExpand(group.subName)" class="w-full p-4 flex items-center justify-between hover:bg-gray-50">
-            <div class="flex items-center gap-4 min-w-0">
-              <div class="text-3xl">{{ getEmoji(group.subName) }}</div>
-              <div class="text-left">
-                <div class="font-black text-gray-800 text-lg">{{ group.subName }}</div>
-                <div class="text-xs text-gray-400 font-bold truncate">{{ group.bestRecord.productName }}</div>
-              </div>
-            </div>
-            <div class="text-right">
-              <div class="font-black text-lg text-gray-800">{{ formatYen(group.bestPrice) }}</div>
-              <svg class="w-5 h-5 text-gray-400 inline-block transition-transform" :class="expanded === group.subName ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-            </div>
-          </button>
+    <main class="flex-1 overflow-y-auto relative pb-28">
+      
+      <!-- 画面1: 小分類リスト -->
+      <transition name="fade">
+        <section v-show="activeView === 'list'" class="p-2 space-y-2">
+          
+          <div v-if="filteredGroups.length === 0" class="text-center text-gray-400 py-10 font-bold">
+            データが登録されていません
+          </div>
 
-          <!-- 展開詳細 -->
-          <div v-if="expanded === group.subName" class="bg-gray-50 p-3 space-y-2">
-            <div v-for="rec in group.records" :key="rec.id" class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
-              <div>
-                <div class="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <span class="text-lg">{{ getStoreIcon(rec.store) }}</span> {{ rec.store }}
+          <!-- 小分類ごとのグループ -->
+          <div v-for="group in filteredGroups" :key="group.subName" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            
+            <!-- メイン行（タップで展開） -->
+            <button @click="toggleExpand(group.subName)" class="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+              <div class="flex items-center gap-4 min-w-0">
+                <div class="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-3xl shrink-0">
+                  {{ group.emoji }}
                 </div>
-                <div class="text-[11px] text-gray-500 font-bold">{{ rec.capacity }}{{ rec.unit }} / {{ formatUnitPrice(rec) }}</div>
+                <div class="text-left min-w-0">
+                  <div class="font-black text-gray-800 text-lg truncate">{{ group.subName }}</div>
+                  <div class="text-xs text-gray-400 font-bold truncate mt-1">最安: {{ group.bestRecord.store }}</div>
+                </div>
               </div>
-              <div class="flex gap-2">
-                <button @click="editRecord(rec)" class="p-2 text-blue-500 bg-blue-50 rounded-lg">✏️</button>
-                <button @click="deleteRecord(rec.id)" class="p-2 text-red-500 bg-red-50 rounded-lg">🗑️</button>
+              <div class="text-right shrink-0 ml-2">
+                <div class="font-black text-xl text-gray-800">{{ formatYen(group.bestRecord.price) }}</div>
+                <svg class="w-5 h-5 text-gray-400 inline-block transition-transform mt-1" :class="expandedGroup === group.subName ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </button>
+
+            <!-- 展開される詳細レコード（店舗ランキング） -->
+            <div v-if="expandedGroup === group.subName" class="bg-gray-50/50 p-3 space-y-2 border-t border-gray-100">
+              <div v-for="(rec, idx) in group.records" :key="rec.id" 
+                   class="bg-white p-3 rounded-xl border flex flex-col gap-2 relative shadow-sm"
+                   :class="getStoreTheme(rec.store).border">
+                
+                <div class="flex justify-between items-start pr-16">
+                  <div>
+                    <!-- コーポレートカラーの店舗名 -->
+                    <div class="text-sm font-bold flex items-center gap-1" :class="getStoreTheme(rec.store).text">
+                      {{ getStoreIcon(rec.store) }} {{ rec.store }}
+                      <span v-if="idx === 0" class="ml-1 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">最安</span>
+                    </div>
+                    <!-- 商品名（任意）と容量 -->
+                    <div class="text-xs text-gray-600 font-bold mt-1">{{ rec.productName || '商品名未設定' }}</div>
+                    <div class="text-xs text-gray-500">{{ rec.capacity }}{{ rec.unit }}</div>
+                    
+                    <div v-if="rec.store === 'ウエルシア' || rec.store === 'イオン'" class="text-[10px] text-red-500 font-bold mt-1">
+                      実質 {{ Math.round(rec.effectivePrice) }}円計算
+                    </div>
+                  </div>
+                  
+                  <div class="text-right">
+                    <div class="font-black text-gray-800 text-lg">{{ formatYen(rec.price) }}</div>
+                    <div class="text-[11px] text-gray-500 font-medium">{{ formatUnitPrice(rec) }}</div>
+                  </div>
+                </div>
+
+                <!-- 編集・削除ボタン -->
+                <div class="absolute right-3 top-0 bottom-0 flex flex-col justify-center gap-2">
+                  <button @click.stop="editRecord(rec)" class="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-500 rounded-full active:scale-90 border border-blue-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                  </button>
+                  <button @click.stop="deleteRecord(rec.id)" class="w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-full active:scale-90 border border-red-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                  </button>
+                </div>
               </div>
             </div>
+
+          </div>
+        </section>
+      </transition>
+
+      <!-- 画面2: 瞬時単価比較 -->
+      <section v-show="activeView === 'calc'" class="p-4 space-y-4">
+        <article class="bg-indigo-50 border border-indigo-200 rounded-3xl p-5 shadow-sm">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-black text-indigo-800 text-lg">商品 A</h3>
+            <button @click="registerFromCalc('a')" v-if="calc.a.price && calc.a.cap" class="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-full font-bold shadow active:scale-95">この価格を登録</button>
+          </div>
+          <div class="flex gap-3">
+            <div class="flex-1"><label class="text-xs font-bold text-gray-500 ml-1">価格(円)</label><input type="number" v-model.number="calc.a.price" class="w-full rounded-2xl p-4 text-xl font-bold text-right outline-none shadow-sm border-none focus:ring-2 focus:ring-indigo-400"></div>
+            <div class="flex-1"><label class="text-xs font-bold text-gray-500 ml-1">容量</label><input type="number" v-model.number="calc.a.cap" class="w-full rounded-2xl p-4 text-xl font-bold text-right outline-none shadow-sm border-none focus:ring-2 focus:ring-indigo-400"></div>
+          </div>
+        </article>
+
+        <article class="bg-emerald-50 border border-emerald-200 rounded-3xl p-5 shadow-sm">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-black text-emerald-800 text-lg">商品 B</h3>
+            <button @click="registerFromCalc('b')" v-if="calc.b.price && calc.b.cap" class="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-full font-bold shadow active:scale-95">この価格を登録</button>
+          </div>
+          <div class="flex gap-3">
+            <div class="flex-1"><label class="text-xs font-bold text-gray-500 ml-1">価格(円)</label><input type="number" v-model.number="calc.b.price" class="w-full rounded-2xl p-4 text-xl font-bold text-right outline-none shadow-sm border-none focus:ring-2 focus:ring-emerald-400"></div>
+            <div class="flex-1"><label class="text-xs font-bold text-gray-500 ml-1">容量</label><input type="number" v-model.number="calc.b.cap" class="w-full rounded-2xl p-4 text-xl font-bold text-right outline-none shadow-sm border-none focus:ring-2 focus:ring-emerald-400"></div>
+          </div>
+        </article>
+
+        <div class="rounded-3xl p-5 text-center text-xl font-black shadow-sm" :class="calcResult.class">
+          {{ calcResult.text }}
+        </div>
+      </section>
+    </main>
+
+    <!-- FAB (Floating Action Button) -->
+    <button @click="openAddSheet" class="fixed bottom-20 right-5 w-16 h-16 bg-theme text-white rounded-full shadow-[0_8px_20px_rgba(245,158,11,0.5)] flex items-center justify-center text-4xl font-light z-40 active:scale-95 transition-transform">
+      ＋
+    </button>
+
+    <!-- 下部ナビゲーション -->
+    <nav class="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-white border-t border-gray-100 flex z-30 h-[68px] shadow-[0_-5px_20px_rgba(0,0,0,0.05)] pb-safe">
+      <button @click="activeView = 'list'" class="flex-1 flex flex-col items-center justify-center font-bold text-[11px]" :class="activeView === 'list' ? 'text-theme' : 'text-gray-400'">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+        リスト
+      </button>
+      <button @click="activeView = 'calc'" class="flex-1 flex flex-col items-center justify-center font-bold text-[11px]" :class="activeView === 'calc' ? 'text-theme' : 'text-gray-400'">
+        <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+        単価比較
+      </button>
+    </nav>
+
+    <!-- 登録・編集ボトムシート -->
+    <transition name="slide">
+      <div v-if="isAdding" class="fixed inset-0 z-50 flex flex-col justify-end">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="isAdding = false"></div>
+        <div class="relative w-full max-w-md mx-auto bg-white rounded-t-[32px] shadow-2xl flex flex-col max-h-[90vh]">
+          
+          <div class="flex justify-between items-center px-6 py-5 border-b border-gray-100">
+            <h3 class="font-black text-gray-800 text-lg">{{ form.id ? '価格情報を編集' : '価格を記録' }}</h3>
+            <button @click="isAdding = false" class="text-gray-400 bg-gray-100 w-8 h-8 rounded-full font-bold flex items-center justify-center">✕</button>
+          </div>
+
+          <div class="p-6 space-y-4 overflow-y-auto flex-1 bg-gray-50/30">
+            
+            <div class="grid grid-cols-2 gap-3">
+              <!-- 大分類 -->
+              <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">大分類 (タブ)</label>
+                <input type="text" v-model="form.mainCategory" list="main-cats" class="w-full bg-white border-2 border-gray-200 rounded-xl p-3 outline-none focus:border-theme text-sm font-bold" placeholder="例: 食品">
+                <datalist id="main-cats"><option v-for="c in uniqueMainCategories" :key="c" :value="c"></option></datalist>
+              </div>
+              <!-- 小分類 -->
+              <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1">小分類 (メイン表示)</label>
+                <input type="text" v-model="form.subCategory" class="w-full bg-white border-2 border-gray-200 rounded-xl p-3 outline-none focus:border-theme text-sm font-bold" placeholder="例: 牛乳">
+              </div>
+            </div>
+
+            <!-- 商品名 -->
+            <div>
+              <label class="block text-sm font-bold text-gray-700 mb-1">商品名 (詳細用)</label>
+              <input type="text" v-model="form.productName" class="w-full bg-white border-2 border-gray-200 rounded-2xl p-4 outline-none focus:border-theme text-base font-bold" placeholder="例: 雪印メグミルク 1000ml">
+            </div>
+
+            <!-- 価格・容量 -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">店頭価格 (円)</label>
+                <input type="number" v-model.number="form.price" class="w-full bg-white border-2 border-gray-200 rounded-2xl p-4 outline-none focus:border-theme text-2xl font-black text-right text-red-500">
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">容量</label>
+                <div class="flex">
+                  <input type="number" v-model.number="form.capacity" class="w-2/3 bg-white border-2 border-r-0 border-gray-200 rounded-l-2xl p-4 outline-none focus:border-theme text-xl font-bold text-right">
+                  <input type="text" v-model="form.unit" class="w-1/3 bg-gray-50 border-2 border-gray-200 rounded-r-2xl p-4 outline-none text-sm text-center" placeholder="単位">
+                </div>
+              </div>
+            </div>
+            
+            <!-- 店舗 -->
+            <div>
+              <label class="block text-sm font-bold text-gray-700 mb-2">購入店舗</label>
+              <select v-model="form.store" class="w-full bg-white border-2 border-gray-200 rounded-2xl p-4 outline-none focus:border-theme text-lg font-bold">
+                <option value="業務スーパー">業務スーパー</option>
+                <option value="ウエルシア">ウエルシア</option>
+                <option value="イオン">イオン</option>
+                <option value="その他">その他</option>
+              </select>
+            </div>
+
+            <button @click="saveRecord" class="w-full bg-theme text-white font-black text-xl py-5 rounded-2xl mt-4 shadow-lg active:scale-95 transition-transform">
+              {{ form.id ? '更新する' : '登録する' }}
+            </button>
           </div>
         </div>
       </div>
-    </main>
-
-    <!-- FAB -->
-    <button @click="openAddSheet" class="fixed bottom-6 right-6 w-14 h-14 bg-theme text-white rounded-full shadow-lg flex items-center justify-center text-3xl z-30 font-light">+</button>
+    </transition>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, addDoc, setDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { createApp, ref, computed, onMounted } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
-    const db = getFirestore(initializeApp({ apiKey: "AIzaSyByelMKXlBERLyD35nMppiyYt5NCLjHi1U", projectId: "price-compare-db" }));
+    const firebaseConfig = {
+      apiKey: "AIzaSyByelMKXlBERLyD35nMppiyYt5NCLjHi1U",
+      authDomain: "price-compare-db.firebaseapp.com",
+      projectId: "price-compare-db"
+    };
+
+    const db = getFirestore(initializeApp(firebaseConfig));
 
     createApp({
       setup() {
+        const activeView = ref('list');
+        const isAdding = ref(false);
         const records = ref([]);
-        const activeMainCat = ref('食品');
-        const expanded = ref('');
+        const activeMainCat = ref('');
+        const expandedGroup = ref('');
+        
+        const calc = ref({ a: { price: '', cap: '' }, b: { price: '', cap: '' } });
+        const form = ref({ id: null, mainCategory: '', subCategory: '', productName: '', capacity: '', unit: 'g', price: '', store: '業務スーパー' });
 
-        // データの加工とグループ化ロジック
+        // 絵文字を小分類から予測
+        const getEmoji = (category) => {
+          const text = (category || "").toLowerCase();
+          if (text.includes('牛乳') || text.includes('ミルク')) return '🥛';
+          if (text.includes('卵') || text.includes('たまご')) return '🥚';
+          if (text.includes('肉') || text.includes('鶏') || text.includes('豚') || text.includes('牛') || text.includes('ウィンナー')) return '🥩';
+          if (text.includes('納豆')) return '🫘';
+          if (text.includes('チーズ')) return '🧀';
+          if (text.includes('パン') || text.includes('食パン')) return '🍞';
+          if (text.includes('米') || text.includes('麦')) return '🍚';
+          if (text.includes('カレー')) return '🍛';
+          if (text.includes('野菜') || text.includes('玉ねぎ') || text.includes('ブロッコリー')) return '🥦';
+          if (text.includes('おむつ') || text.includes('パンパース')) return '👶';
+          if (text.includes('ペーパー') || text.includes('ティッシュ')) return '🧻';
+          if (text.includes('洗剤')) return '🫧';
+          if (text.includes('豆腐')) return '🧊';
+          if (text.includes('魚') || text.includes('サバ')) return '🐟';
+          if (text.includes('ドレッシング')) return '🥗';
+          if (text.includes('お菓子') || text.includes('ケーキ')) return '🥞';
+          return '🛒';
+        };
+
+        const formatYen = (val) => val ? Number(val).toLocaleString() + '円' : '0円';
+
+        // コーポレートカラーの設定
+        const getStoreTheme = (store) => {
+          if (store === 'イオン') return { text: 'text-fuchsia-700', border: 'border-fuchsia-200' };
+          if (store === 'ウエルシア') return { text: 'text-blue-700', border: 'border-blue-200' };
+          if (store === '業務スーパー') return { text: 'text-green-700', border: 'border-green-200' };
+          return { text: 'text-gray-700', border: 'border-gray-200' };
+        };
+
+        const getStoreIcon = (store) => {
+          if (store === 'イオン') return '🟣';
+          if (store === 'ウエルシア') return '🔵';
+          if (store === '業務スーパー') return '🟢';
+          return '⚪';
+        };
+
+        // 実質価格と単価の計算
+        const getEffectivePrice = (record) => {
+          let p = Number(record.price);
+          if (record.store === 'ウエルシア') p = p / 1.5;
+          if (record.store === 'イオン') p = p * 0.8;
+          return p;
+        };
+
+        const formatUnitPrice = (record) => {
+          const unitP = getEffectivePrice(record) / Number(record.capacity || 1);
+          if (record.unit === 'g' || record.unit === 'ml') return `100${record.unit}あたり ${(unitP * 100).toFixed(1)}円`;
+          return `1${record.unit}あたり ${unitP.toFixed(1)}円`;
+        };
+
+        // 大分類のタブを自動生成
+        const uniqueMainCategories = computed(() => {
+          const cats = new Set(records.value.map(r => r.mainCategory || '未分類'));
+          return Array.from(cats).sort();
+        });
+
+        // 選択された大分類に属するデータを小分類でグループ化
         const filteredGroups = computed(() => {
-          const filtered = records.value.filter(r => r.mainCategory === activeMainCat.value);
+          const filtered = records.value.filter(r => (r.mainCategory || '未分類') === activeMainCat.value);
           const map = new Map();
+          
           filtered.forEach(r => {
-            if (!map.has(r.subCategory)) map.set(r.subCategory, { subName: r.subCategory, records: [], bestPrice: Infinity });
-            const group = map.get(r.subCategory);
+            const sub = r.subCategory || "未設定";
+            if (!map.has(sub)) {
+              map.set(sub, { subName: sub, emoji: getEmoji(sub), records: [], bestEffectivePrice: Infinity, bestRecord: null });
+            }
+            
+            const group = map.get(sub);
+            const effPrice = getEffectivePrice(r);
+            const unitPrice = effPrice / Number(r.capacity || 1);
+            
+            r.effectivePrice = effPrice;
+            r.unitPrice = unitPrice;
             group.records.push(r);
-            if (Number(r.price) < group.bestPrice) {
-              group.bestPrice = Number(r.price);
+            
+            if (unitPrice < group.bestEffectivePrice) {
+              group.bestEffectivePrice = unitPrice;
               group.bestRecord = r;
             }
           });
+
+          // グループ内レコードを単価が安い順にソート
+          map.forEach(g => g.records.sort((a, b) => a.unitPrice - b.unitPrice));
+          
+          // グループ自体はあいうえお順にソート
           return Array.from(map.values()).sort((a, b) => a.subName.localeCompare(b.subName, 'ja'));
         });
 
-        // 絵文字・アイコン・フォーマット関数（以前のものを統合）
-        const getEmoji = (name) => { /* 以前のロジックをここに */ return '🛒'; };
-        const getStoreIcon = (store) => { return store === 'イオン' ? '🟣' : '🔵'; };
-        const formatYen = (val) => Number(val).toLocaleString() + '円';
-        const formatUnitPrice = (r) => "100gあたり計算中..."; 
+        const toggleExpand = (name) => {
+          expandedGroup.value = expandedGroup.value === name ? '' : name;
+        };
+
+        const openAddSheet = () => {
+          form.value = { id: null, mainCategory: activeMainCat.value || '', subCategory: '', productName: '', capacity: '', unit: 'g', price: '', store: '業務スーパー' };
+          isAdding.value = true;
+        };
+
+        const registerFromCalc = (itemKey) => {
+          form.value = { 
+            id: null, mainCategory: activeMainCat.value || '', subCategory: '', productName: '', 
+            capacity: calc.value[itemKey].cap || '', unit: 'g', 
+            price: calc.value[itemKey].price || '', store: '業務スーパー' 
+          };
+          isAdding.value = true;
+        };
+
+        const editRecord = (rec) => {
+          form.value = { ...rec };
+          isAdding.value = true;
+        };
+
+        const saveRecord = async () => {
+          if (!form.value.subCategory || !form.value.price || !form.value.capacity) return alert("小分類・価格・容量は必須です");
+          try {
+            const payload = {
+              mainCategory: form.value.mainCategory || '未分類',
+              subCategory: form.value.subCategory,
+              productName: form.value.productName || '',
+              capacity: Number(form.value.capacity),
+              unit: form.value.unit || 'g',
+              price: Number(form.value.price),
+              store: form.value.store
+            };
+            
+            if (form.value.id) await setDoc(doc(db, "price_records", form.value.id), payload);
+            else await addDoc(collection(db, "price_records"), payload);
+            
+            activeMainCat.value = payload.mainCategory;
+            expandedGroup.value = payload.subCategory;
+            isAdding.value = false;
+          } catch(e) { alert("エラー: " + e.message); }
+        };
+
+        const deleteRecord = async (id) => {
+          if(confirm("この記録を削除しますか？")) await deleteDoc(doc(db, "price_records", id));
+        };
+
+        const calcResult = computed(() => {
+          const uA = calc.value.a.price / calc.value.a.cap;
+          const uB = calc.value.b.price / calc.value.b.cap;
+          if (!uA || !uB) return { text: '比較する数値を入力', class: 'bg-white text-gray-400 border border-gray-200' };
+          if (uA < uB) return { text: '🏆 商品Aがお得！', class: 'bg-indigo-100 text-indigo-800' };
+          if (uA > uB) return { text: '🏆 商品Bがお得！', class: 'bg-emerald-100 text-emerald-800' };
+          return { text: '単価は同じです', class: 'bg-yellow-100 text-yellow-800' };
+        });
 
         onMounted(() => {
           onSnapshot(collection(db, "price_records"), (snapshot) => {
-            records.value = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            records.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // 初期タブ設定
+            if (records.value.length > 0 && !activeMainCat.value) {
+               const cats = Array.from(new Set(records.value.map(r => r.mainCategory || '未分類'))).sort();
+               if(cats.length > 0) activeMainCat.value = cats[0];
+            }
           });
         });
 
-        return { records, activeMainCat, mainCategories: ['食品', '日用品'], filteredGroups, expanded, toggleExpand: (name) => expanded.value = expanded.value === name ? '' : name, getEmoji, getStoreIcon, formatYen, formatUnitPrice };
+        return { 
+          activeView, isAdding, records, activeMainCat, expandedGroup, calc, form, 
+          uniqueMainCategories, filteredGroups, toggleExpand, openAddSheet, registerFromCalc, editRecord, saveRecord, deleteRecord, 
+          formatUnitPrice, formatYen, getStoreIcon, getStoreTheme, calcResult 
+        };
       }
     }).mount('#app');
   </script>
