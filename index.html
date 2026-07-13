@@ -12,8 +12,8 @@
     .slide-enter-active, .slide-leave-active { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .slide-enter-from { transform: translateY(100%); }
     .slide-leave-to { transform: translateY(100%); }
-    .bg-theme { background-color: #8275E5; }
-    .text-theme { color: #8275E5; }
+    .bg-theme { background-color: #F59E0B; }
+    .text-theme { color: #F59E0B; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     input[type="search"]::-webkit-search-cancel-button { display: none; }
@@ -21,24 +21,59 @@
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
   <div id="app" v-cloak class="max-w-md mx-auto bg-[#F4F4F9] min-h-screen shadow-2xl relative flex flex-col">
-    
-    <header class="bg-theme text-white px-4 py-4 sticky top-0 z-20 shadow-md flex items-center justify-center h-16">
-      <h1 class="text-lg font-bold tracking-wide">
-        {{ activeView === 'search' ? '商品検索＆底値' : '単価比較' }}
-      </h1>
+
+    <header class="bg-theme text-black px-4 pt-4 pb-0 sticky top-0 z-20 shadow-md">
+      <div class="flex items-center justify-between h-12">
+        <h1 class="text-2xl font-medium tracking-wide">お買い得メモ</h1>
+        <div class="flex items-center gap-4">
+          <button class="w-9 h-9 flex items-center justify-center">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </button>
+          <button class="w-9 h-9 flex items-center justify-center">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-4 flex items-end justify-between">
+        <div class="flex gap-8 overflow-x-auto hide-scrollbar pb-3">
+          <button
+            v-for="cat in majorCategories"
+            :key="cat"
+            @click="selectedMajor = cat; expandedId = ''"
+            class="relative text-lg whitespace-nowrap pb-3 font-medium transition-colors"
+            :class="selectedMajor === cat ? 'text-black font-bold' : 'text-black/45'"
+          >
+            {{ cat }}
+            <span
+              v-if="selectedMajor === cat"
+              class="absolute left-1/2 -translate-x-1/2 -bottom-1 w-12 h-1.5 rounded-full bg-[#6B4A16]"
+            ></span>
+          </button>
+        </div>
+        <button class="w-10 h-10 flex items-center justify-center shrink-0 mb-2">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"></path>
+          </svg>
+        </button>
+      </div>
     </header>
 
     <main class="flex-1 overflow-y-auto relative pb-28">
       <transition name="fade">
-        <section v-show="activeView === 'search'" class="p-4 space-y-4">
+        <section class="p-4 space-y-4">
           <div class="relative sticky top-0 z-10">
             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
               </svg>
             </div>
-            <input type="search" v-model="searchQuery" placeholder="大分類・小分類・商品名で検索"
-                   class="w-full rounded-2xl border-2 border-transparent shadow-sm pl-12 pr-10 py-4 bg-white focus:border-[#8275E5] focus:outline-none text-lg font-bold text-gray-700 transition-colors">
+            <input type="search" v-model="searchQuery" placeholder="小分類・商品名で検索"
+                   class="w-full rounded-2xl border-2 border-transparent shadow-sm pl-12 pr-10 py-4 bg-white focus:border-[#F59E0B] focus:outline-none text-lg font-bold text-gray-700 transition-colors">
             <button v-if="searchQuery" @click="searchQuery = ''" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400">
               <svg class="w-6 h-6 bg-gray-100 rounded-full p-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -56,36 +91,35 @@
             <button @click="storeFilter = '業務スーパー'" class="px-4 py-2 rounded-full font-bold text-sm shrink-0 transition-colors shadow-sm"
                     :class="storeFilter === '業務スーパー' ? 'bg-green-700 text-white' : 'bg-white text-green-700 border border-green-100'">業スー</button>
           </div>
-          
-          <div v-if="searchResults.length === 0" class="text-center text-gray-400 py-10 font-bold">
+
+          <div v-if="filteredGroups.length === 0" class="text-center text-gray-400 py-10 font-bold">
             該当する商品がありません
           </div>
 
-          <div class="space-y-5">
-            <div v-for="group in searchResults" :key="group.key" class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
-              
+          <div class="space-y-4">
+            <div v-for="group in filteredGroups" :key="group.key" class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
               <div class="flex items-center gap-4 cursor-pointer" @click="toggleExpand(group.key)">
-                <div class="w-16 h-16 rounded-2xl bg-[#F0EEFF] flex items-center justify-center text-4xl shadow-inner shrink-0">
+                <div class="w-16 h-16 rounded-2xl bg-[#FFF3DB] flex items-center justify-center text-4xl shadow-inner shrink-0">
                   {{ group.emoji }}
                 </div>
-                
+
                 <div class="flex-1 min-w-0">
                   <div class="text-xs font-bold text-gray-400 mb-1">{{ group.majorCategory }}</div>
                   <h3 class="font-black text-gray-900 text-xl truncate mb-1">{{ group.subCategory }}</h3>
                   <div class="text-sm font-bold text-gray-400 truncate mb-2">{{ group.productName }}</div>
-                  
+
                   <div class="flex items-end gap-2">
                     <span class="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded">底値</span>
                     <span class="font-black text-2xl text-gray-800 leading-none">{{ formatYen(group.bestRecord.price) }}</span>
                   </div>
-                  
+
                   <div class="text-xs font-bold mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-lg"
                        :class="getStoreTheme(group.bestRecord.store).bg + ' ' + getStoreTheme(group.bestRecord.store).text">
                     {{ getStoreIcon(group.bestRecord.store) }} {{ group.bestRecord.store }}
                     <span class="opacity-80 ml-1">({{ formatUnitPrice(group.bestRecord) }})</span>
                   </div>
                 </div>
-                
+
                 <div class="text-gray-300 transition-transform shrink-0" :class="expandedProduct === group.key ? 'rotate-180' : ''">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -97,7 +131,6 @@
                 <div v-for="(rec, idx) in group.records" :key="rec.id"
                      class="flex justify-between items-center p-3 rounded-2xl transition-colors relative"
                      :class="idx === 0 ? 'bg-yellow-50/50 border border-yellow-200' : 'bg-gray-50 border border-transparent'">
-                  
                   <div class="flex items-center gap-3">
                     <div class="font-bold text-xl" :class="getStoreTheme(rec.store).text">
                       {{ getStoreIcon(rec.store, idx === 0) }}
@@ -114,7 +147,7 @@
                     <div class="font-black text-gray-800 text-lg">{{ formatYen(rec.price) }}</div>
                     <div class="text-[11px] text-gray-500 font-medium">{{ formatUnitPrice(rec) }}</div>
                   </div>
-                  
+
                   <div class="absolute right-2 top-0 bottom-0 flex flex-col justify-center gap-1">
                     <button @click.stop="editRecord(rec)" class="w-8 h-8 flex items-center justify-center bg-white shadow-sm border border-gray-200 text-blue-500 rounded-full active:scale-90">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,7 +208,7 @@
       </section>
     </main>
 
-    <button @click="openAddSheet" class="fixed bottom-24 right-6 w-16 h-16 bg-theme text-white rounded-full shadow-[0_8px_20px_rgba(130,117,229,0.5)] flex items-center justify-center text-4xl font-light z-40 active:scale-95 transition-transform">
+    <button @click="openAddSheet" class="fixed bottom-24 right-6 w-16 h-16 bg-theme text-white rounded-full shadow-[0_8px_20px_rgba(245,158,11,0.5)] flex items-center justify-center text-4xl font-light z-40 active:scale-95 transition-transform">
       ＋
     </button>
 
@@ -225,7 +258,7 @@
                 <input type="number" v-model.number="form.capacity" class="w-full bg-white border-2 border-gray-200 rounded-2xl p-4 outline-none focus:border-theme text-xl font-bold text-right">
               </div>
             </div>
-            
+
             <div>
               <label class="block text-sm font-bold text-gray-700 mb-2">単位</label>
               <input type="text" v-model="form.unit" class="w-full bg-white border-2 border-gray-200 rounded-2xl p-4 outline-none focus:border-theme text-lg font-bold" placeholder="g / ml / 個">
@@ -241,7 +274,7 @@
               </select>
             </div>
 
-            <button @click="saveRecord" class="w-full bg-theme text-white font-black text-xl py-5 rounded-2xl mt-4 shadow-[0_8px_20px_rgba(130,117,229,0.3)] active:scale-95 transition-transform">
+            <button @click="saveRecord" class="w-full bg-theme text-white font-black text-xl py-5 rounded-2xl mt-4 shadow-[0_8px_20px_rgba(245,158,11,0.3)] active:scale-95 transition-transform">
               {{ form.id ? '更新する' : '登録する' }}
             </button>
           </div>
@@ -270,8 +303,8 @@
         const records = ref([]);
         const searchQuery = ref('');
         const storeFilter = ref('all');
+        const selectedMajor = ref('(未設定)');
         const expandedProduct = ref('');
-        
         const calc = ref({ a: { price: '', cap: '' }, b: { price: '', cap: '' } });
         const form = ref({ id: null, category: '', subcategory: '', productName: '', capacity: '', unit: 'g', price: '', store: '業務スーパー' });
 
@@ -307,86 +340,6 @@
           return '⚪';
         };
 
-        const getMajorCategory = (r) => r.category || '未設定';
-        const getSubCategory = (r) => r.subcategory || r.productName || '未設定';
-        const getDisplayName = (r) => r.productName || '未設定';
-
-        const uniqueProducts = computed(() => {
-          const map = new Map();
-          records.value.forEach(r => {
-            const key = `${getMajorCategory(r)}::${getSubCategory(r)}::${getDisplayName(r)}`;
-            if (!map.has(key)) map.set(key, r);
-          });
-          return Array.from(map.values());
-        });
-
-        const productsGrouped = computed(() => {
-          let targetRecords = storeFilter.value === 'all'
-            ? records.value
-            : records.value.filter(r => r.store === storeFilter.value);
-
-          const majorMap = new Map();
-
-          targetRecords.forEach(r => {
-            const major = getMajorCategory(r);
-            const sub = getSubCategory(r);
-            const name = getDisplayName(r);
-            const majorKey = major;
-
-            if (!majorMap.has(majorKey)) {
-              majorMap.set(majorKey, {
-                majorCategory: major,
-                groups: new Map()
-              });
-            }
-
-            const majorItem = majorMap.get(majorKey);
-            const groupKey = `${sub}::${name}`;
-
-            if (!majorItem.groups.has(groupKey)) {
-              majorItem.groups.set(groupKey, {
-                key: `${major}::${sub}::${name}`,
-                majorCategory: major,
-                subCategory: sub,
-                productName: name,
-                emoji: getEmoji(sub || major),
-                records: []
-              });
-            }
-
-            majorItem.groups.get(groupKey).records.push(r);
-          });
-
-          return Array.from(majorMap.values())
-            .sort((a, b) => a.majorCategory.localeCompare(b.majorCategory, 'ja'))
-            .flatMap(majorItem => {
-              return Array.from(majorItem.groups.values())
-                .map(group => {
-                  group.records.forEach(r => {
-                    r.effectivePrice = getEffectivePrice(r);
-                  });
-                  group.records.sort((a, b) => (a.effectivePrice / a.capacity) - (b.effectivePrice / b.capacity));
-                  group.bestRecord = group.records[0];
-                  return group;
-                })
-                .sort((a, b) => {
-                  const subCompare = a.subCategory.localeCompare(b.subCategory, 'ja');
-                  if (subCompare !== 0) return subCompare;
-                  return a.productName.localeCompare(b.productName, 'ja');
-                });
-            });
-        });
-
-        const searchResults = computed(() => {
-          if (!searchQuery.value) return productsGrouped.value;
-          const q = searchQuery.value.toLowerCase();
-          return productsGrouped.value.filter(p =>
-            p.majorCategory.toLowerCase().includes(q) ||
-            p.subCategory.toLowerCase().includes(q) ||
-            p.productName.toLowerCase().includes(q)
-          );
-        });
-
         const getEmoji = (category) => {
           const text = (category || "").toLowerCase();
           if (text.includes('牛乳') || text.includes('ミルク')) return '🥛';
@@ -408,19 +361,94 @@
           return '🛍️';
         };
 
+        const getMajorCategory = (r) => r.category || '(未設定)';
+        const getSubCategory = (r) => r.subcategory || '(未設定)';
+        const getProductName = (r) => r.productName || '(未設定)';
+
+        const majorCategories = computed(() => {
+          const set = new Set(records.value.map(r => getMajorCategory(r)));
+          return Array.from(set).sort((a, b) => a.localeCompare(b, 'ja'));
+        });
+
+        const groupsByMajor = computed(() => {
+          const targetRecords = storeFilter.value === 'all'
+            ? records.value
+            : records.value.filter(r => r.store === storeFilter.value);
+
+          const map = new Map();
+
+          targetRecords.forEach(r => {
+            const major = getMajorCategory(r);
+            const sub = getSubCategory(r);
+            const name = getProductName(r);
+            const key = `${major}::${sub}::${name}`;
+
+            if (!map.has(key)) {
+              map.set(key, {
+                key,
+                majorCategory: major,
+                subCategory: sub,
+                productName: name,
+                emoji: getEmoji(sub || major),
+                records: []
+              });
+            }
+
+            map.get(key).records.push({
+              ...r,
+              effectivePrice: getEffectivePrice(r)
+            });
+          });
+
+          const arr = Array.from(map.values()).map(g => {
+            g.records.sort((a, b) => (a.effectivePrice / a.capacity) - (b.effectivePrice / b.capacity));
+            g.bestRecord = g.records[0];
+            return g;
+          });
+
+          return arr.sort((a, b) => {
+            const majorDiff = a.majorCategory.localeCompare(b.majorCategory, 'ja');
+            if (majorDiff !== 0) return majorDiff;
+            const subDiff = a.subCategory.localeCompare(b.subCategory, 'ja');
+            if (subDiff !== 0) return subDiff;
+            return a.productName.localeCompare(b.productName, 'ja');
+          });
+        });
+
+        const filteredGroups = computed(() => {
+          let list = groupsByMajor.value;
+
+          if (selectedMajor.value !== '(未設定)') {
+            list = list.filter(g => g.majorCategory === selectedMajor.value);
+          } else {
+            list = list.filter(g => g.majorCategory === '(未設定)');
+          }
+
+          if (searchQuery.value) {
+            const q = searchQuery.value.toLowerCase();
+            list = list.filter(g =>
+              g.majorCategory.toLowerCase().includes(q) ||
+              g.subCategory.toLowerCase().includes(q) ||
+              g.productName.toLowerCase().includes(q)
+            );
+          }
+
+          return list;
+        });
+
         const toggleExpand = (key) => {
           expandedProduct.value = expandedProduct.value === key ? '' : key;
         };
 
         const openAddSheet = () => {
-          form.value = { id: null, category: '', subcategory: '', productName: searchQuery.value || '', capacity: '', unit: 'g', price: '', store: '業務スーパー' };
+          form.value = { id: null, category: selectedMajor.value === '(未設定)' ? '' : selectedMajor.value, subcategory: '', productName: searchQuery.value || '', capacity: '', unit: 'g', price: '', store: '業務スーパー' };
           isAdding.value = true;
         };
 
         const registerFromCalc = (itemKey) => {
-          form.value = { 
+          form.value = {
             id: null,
-            category: '',
+            category: selectedMajor.value === '(未設定)' ? '' : selectedMajor.value,
             subcategory: '',
             productName: '',
             capacity: calc.value[itemKey].cap || '',
@@ -448,21 +476,21 @@
               price: form.value.price,
               store: form.value.store
             };
-            
+
             if (form.value.id) {
               await setDoc(doc(db, "price_records", form.value.id), payload);
             } else {
               await addDoc(collection(db, "price_records"), payload);
             }
-            
+
             isAdding.value = false;
-          } catch(e) {
+          } catch (e) {
             alert("エラー: " + e.message);
           }
         };
 
         const deleteRecord = async (id) => {
-          if(confirm("この記録を削除しますか？")) await deleteDoc(doc(db, "price_records", id));
+          if (confirm("この記録を削除しますか？")) await deleteDoc(doc(db, "price_records", id));
         };
 
         const calcResult = computed(() => {
@@ -481,9 +509,10 @@
         });
 
         return {
-          activeView, isAdding, records, searchQuery, storeFilter, expandedProduct, calc, form,
-          uniqueProducts, searchResults, toggleExpand, openAddSheet, registerFromCalc, editRecord,
-          saveRecord, deleteRecord, formatUnitPrice, formatYen, getStoreIcon, getStoreTheme, calcResult
+          activeView, isAdding, records, searchQuery, storeFilter, selectedMajor, expandedProduct,
+          calc, form, majorCategories, filteredGroups, toggleExpand, openAddSheet,
+          registerFromCalc, editRecord, saveRecord, deleteRecord, formatUnitPrice, formatYen,
+          getStoreIcon, getStoreTheme, calcResult
         };
       }
     }).mount('#app');
