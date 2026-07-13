@@ -28,7 +28,7 @@
         {{ activeView === 'list' ? '底値リスト' : (activeView === 'calc' ? '単価比較' : '設定') }}
       </div>
       
-      <!-- 検索バー (リスト画面のみ) -->
+      <!-- 検索バー -->
       <div v-show="activeView === 'list'" class="px-3 pb-2 pt-1 bg-theme">
         <div class="relative">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
@@ -42,7 +42,7 @@
         </div>
       </div>
 
-      <!-- 大分類タブ (リスト画面かつ検索未入力時のみ) -->
+      <!-- 大分類タブ -->
       <div v-show="activeView === 'list' && !searchQuery" class="flex overflow-x-auto hide-scrollbar px-2 bg-black/10">
         <button v-for="cat in sortedMainCategories" :key="cat" @click="activeMainCat = cat" 
                 class="px-5 py-3 font-bold whitespace-nowrap border-b-4 transition-all"
@@ -71,7 +71,10 @@
                 </div>
                 <div class="text-left min-w-0">
                   <div class="font-black text-gray-800 text-lg truncate">{{ group.subName }}</div>
-                  <div class="text-[11px] text-gray-400 font-bold truncate mt-0.5">{{ group.bestRecord.productName || '商品名未登録' }}</div>
+                  <div class="text-[11px] text-gray-400 font-bold truncate mt-0.5">
+                    {{ group.bestRecord.productName || '商品名未登録' }}
+                    <span class="ml-1 text-gray-500 font-medium">({{ group.bestRecord.capacity }}{{ group.bestRecord.unit }})</span>
+                  </div>
                   <div class="text-xs font-bold mt-1">最安: <span :class="getStoreTheme(group.bestRecord.store).text">{{ group.bestRecord.store }}</span></div>
                 </div>
               </div>
@@ -81,7 +84,6 @@
               </div>
             </button>
 
-            <!-- 詳細レコード -->
             <div v-if="expandedGroup === group.subName" class="bg-gray-50/50 p-3 space-y-2 border-t border-gray-100">
               <div v-for="(rec, idx) in group.records" :key="rec.id" class="bg-white p-3 rounded-xl border flex justify-between relative shadow-sm" :class="getStoreTheme(rec.store).border">
                 <div class="pr-16">
@@ -121,7 +123,6 @@
 
       <!-- 画面2: 単価比較 -->
       <section v-show="activeView === 'calc'" class="p-4 space-y-4">
-        <!-- 商品A -->
         <article class="bg-amber-50 border border-amber-200 rounded-3xl p-4 shadow-sm">
           <div class="flex justify-between items-center mb-3">
             <h3 class="font-black text-amber-800 text-lg">商品 A</h3>
@@ -133,7 +134,6 @@
           </div>
         </article>
 
-        <!-- 商品B -->
         <article class="bg-stone-50 border border-stone-200 rounded-3xl p-4 shadow-sm">
           <div class="flex justify-between items-center mb-3">
             <h3 class="font-black text-stone-700 text-lg">商品 B</h3>
@@ -145,7 +145,6 @@
           </div>
         </article>
 
-        <!-- 画像準拠の計算結果表示 -->
         <div class="rounded-[24px] overflow-hidden bg-white shadow-md border border-gray-100 mt-6">
           <div v-if="!calcValid" class="p-6 text-center text-gray-400 font-bold">比較する数値を入力してください</div>
           <div v-else>
@@ -175,11 +174,21 @@
           <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
             <h2 class="font-black text-gray-800 text-xl mb-4 border-b pb-2">アプリ設定</h2>
             
-            <div class="space-y-5">
+            <div class="space-y-6">
+              
+              <!-- 直感的なタブ並び替えUI -->
               <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">大分類タブの並び順 (左から)</label>
-                <p class="text-xs text-gray-400 mb-2">カンマ(,)区切りで入力。ここに無いものは右側に追加されます。</p>
-                <input type="text" v-model="settings.tabOrderString" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:border-theme text-sm font-bold" placeholder="例: 杏珠,食品,日用品">
+                <label class="block text-sm font-bold text-gray-700 mb-1">大分類タブの並び替え</label>
+                <p class="text-xs text-gray-400 mb-3">↑↓ボタンでタブの表示順を入れ替えます。</p>
+                <div class="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
+                  <div v-for="(cat, index) in mutableTabOrder" :key="cat" class="flex items-center justify-between p-3 border-b border-gray-100 bg-white">
+                    <span class="font-bold text-gray-700">{{ cat }}</span>
+                    <div class="flex gap-2">
+                      <button @click="moveTabUp(index)" :disabled="index === 0" class="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-lg disabled:opacity-30">↑</button>
+                      <button @click="moveTabDown(index)" :disabled="index === mutableTabOrder.length - 1" class="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-lg disabled:opacity-30">↓</button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -265,7 +274,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getFirestore, collection, onSnapshot, addDoc, setDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { createApp, ref, computed, onMounted } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+    import { createApp, ref, computed, onMounted, watch } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
     const firebaseConfig = { apiKey: "AIzaSyByelMKXlBERLyD35nMppiyYt5NCLjHi1U", projectId: "price-compare-db" };
     const db = getFirestore(initializeApp(firebaseConfig));
@@ -278,24 +287,25 @@
         const searchQuery = ref('');
         const activeMainCat = ref('');
         const expandedGroup = ref('');
-        const settings = ref({ tabOrderString: '杏珠,食品,日用品,おかず,スイーツ,肉,野菜,乳製品,米', discountWelcia: 33, discountAeon: 20 });
+        const settings = ref({ tabOrderArray: ['杏珠', '食品', '日用品', 'おかず', 'スイーツ', '肉', '野菜', '乳製品', '米'], discountWelcia: 33, discountAeon: 20 });
+        const mutableTabOrder = ref([]);
         
         const calc = ref({ a: { price: '', cap: '' }, b: { price: '', cap: '' } });
         const form = ref({ id: null, mainCategory: '', subCategory: '', productName: '', capacity: '', unit: 'g', price: '', store: '業務スーパー' });
 
         const getEmoji = (category, product) => {
           const text = ((category || "") + " " + (product || "")).toLowerCase();
-          if (text.includes('麻婆豆腐') || text.includes('豆腐')) return '🧊';
+          if (text.includes('おむつ') || text.includes('パンパース') || text.includes('おしりふき')) return '👶';
+          if (text.includes('麻婆豆腐') || text.includes('豆腐')) return '🍲';
           if (text.includes('かに玉') || text.includes('卵') || text.includes('たまご')) return '🥚';
           if (text.includes('牛乳') || text.includes('ミルク')) return '🥛';
           if (text.includes('肉') || text.includes('鶏') || text.includes('豚') || text.includes('ウィンナー')) return '🥩';
           if (text.includes('納豆')) return '🫘';
           if (text.includes('チーズ')) return '🧀';
-          if (text.includes('パン')) return '🍞';
+          if (text.includes('パン') || text.includes('食パン')) return '🍞';
           if (text.includes('米') || text.includes('麦')) return '🍚';
           if (text.includes('カレー')) return '🍛';
           if (text.includes('野菜') || text.includes('玉ねぎ') || text.includes('ブロッコリー') || text.includes('ナス')) return '🥦';
-          if (text.includes('おむつ') || text.includes('パンパース') || text.includes('おしりふき')) return '👶';
           if (text.includes('ペーパー') || text.includes('ティッシュ')) return '🧻';
           if (text.includes('洗剤')) return '🫧';
           if (text.includes('魚') || text.includes('サバ')) return '🐟';
@@ -337,8 +347,8 @@
 
         const sortedMainCategories = computed(() => {
           const cats = uniqueRawMainCategories.value;
-          const order = settings.value.tabOrderString.split(',').map(s => s.trim());
-          return cats.sort((a, b) => {
+          const order = settings.value.tabOrderArray || [];
+          return [...cats].sort((a, b) => {
             const idxA = order.indexOf(a), idxB = order.indexOf(b);
             if (idxA !== -1 && idxB !== -1) return idxA - idxB;
             if (idxA !== -1) return -1;
@@ -346,6 +356,33 @@
             return a.localeCompare(b, 'ja');
           });
         });
+
+        // 設定画面を開いたときに並び替えリストを同期
+        watch(activeView, (newView) => {
+          if (newView === 'settings') {
+            const currentOrder = settings.value.tabOrderArray || [];
+            const allCats = uniqueRawMainCategories.value;
+            const merged = [...currentOrder];
+            allCats.forEach(c => { if (!merged.includes(c)) merged.push(c); });
+            mutableTabOrder.value = merged;
+          }
+        });
+
+        const moveTabUp = (index) => {
+          if (index > 0) {
+            const temp = mutableTabOrder.value[index - 1];
+            mutableTabOrder.value[index - 1] = mutableTabOrder.value[index];
+            mutableTabOrder.value[index] = temp;
+          }
+        };
+
+        const moveTabDown = (index) => {
+          if (index < mutableTabOrder.value.length - 1) {
+            const temp = mutableTabOrder.value[index + 1];
+            mutableTabOrder.value[index + 1] = mutableTabOrder.value[index];
+            mutableTabOrder.value[index] = temp;
+          }
+        };
 
         const filteredGroups = computed(() => {
           let targetRecords = records.value;
@@ -409,6 +446,7 @@
         const deleteRecord = async (id) => { if(confirm("削除しますか？")) await deleteDoc(doc(db, "price_records", id)); };
 
         const saveSettings = async () => {
+          settings.value.tabOrderArray = [...mutableTabOrder.value];
           try {
             await setDoc(doc(db, "settings", "config"), settings.value);
             alert("設定を保存しました。");
@@ -436,7 +474,14 @@
 
         onMounted(() => {
           onSnapshot(doc(db, "settings", "config"), (docSnap) => {
-            if (docSnap.exists()) settings.value = { ...settings.value, ...docSnap.data() };
+            if (docSnap.exists()) {
+               const data = docSnap.data();
+               // 過去のカンマ区切り設定があれば配列に変換して引き継ぐ
+               if (data.tabOrderString && !data.tabOrderArray) {
+                  data.tabOrderArray = data.tabOrderString.split(',').map(s=>s.trim());
+               }
+               settings.value = { ...settings.value, ...data };
+            }
           });
           onSnapshot(collection(db, "price_records"), (snapshot) => {
             records.value = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -448,8 +493,8 @@
         });
 
         return { 
-          activeView, isAdding, records, searchQuery, activeMainCat, expandedGroup, calc, form, settings,
-          uniqueRawMainCategories, sortedMainCategories, filteredGroups, toggleExpand, openAddSheet, registerFromCalc, editRecord, saveRecord, deleteRecord, saveSettings,
+          activeView, isAdding, records, searchQuery, activeMainCat, expandedGroup, calc, form, settings, mutableTabOrder,
+          uniqueRawMainCategories, sortedMainCategories, filteredGroups, toggleExpand, openAddSheet, registerFromCalc, editRecord, saveRecord, deleteRecord, saveSettings, moveTabUp, moveTabDown,
           formatUnitPrice, formatYen, getStoreIcon, getStoreTheme, calcResult, calcValid 
         };
       }
