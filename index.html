@@ -97,7 +97,7 @@
               </div>
             </button>
 
-            <!-- ▼▼▼ここが修正箇所です。絶対被らないFlexレイアウトになっています▼▼▼ -->
+            <!-- 展開時の詳細レコード -->
             <div v-if="expandedGroup === group.subName" class="bg-gray-50/50 p-3 space-y-2 border-t border-gray-100">
               <div v-for="(rec, idx) in group.records" :key="rec.id" class="bg-white p-3 rounded-xl border shadow-sm" :class="getStoreTheme(rec.store).border">
                 
@@ -120,7 +120,7 @@
                   </div>
                 </div>
 
-                <!-- 下段：編集・削除ボタン（絶対に文字と被らないよう専用の行として配置） -->
+                <!-- 下段：編集・削除ボタン -->
                 <div class="flex justify-end gap-2 pt-3 mt-2 border-t border-gray-50">
                   <button @click.stop="editRecord(rec)" class="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-500 rounded-lg border border-blue-100 active:scale-95 text-xs font-bold shadow-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
@@ -171,9 +171,14 @@
               </div>
             </label>
 
-            <!-- 右側の価格表示 -->
-            <div class="text-right shrink-0" :class="{'opacity-50': cartChecked[group.subName]}">
-              <div class="font-black text-xl leading-none" :class="getStoreTheme(activeStoreTab).text">{{ formatYen(Math.round(group.bestRecord.effectivePrice)) }}</div>
+            <!-- ▼▼▼ここが修正箇所です。店頭価格を大きく、割引価格を小さく表示▼▼▼ -->
+            <div class="text-right shrink-0 flex flex-col justify-center" :class="{'opacity-50': cartChecked[group.subName]}">
+              <div class="font-black text-xl leading-none" :class="getStoreTheme(activeStoreTab).text">
+                {{ formatYen(group.bestRecord.price) }}
+              </div>
+              <div v-if="getStoreDiscount(group.bestRecord.store) > 0" class="text-[10px] text-red-500 font-bold mt-1">
+                割引後: {{ formatYen(Math.round(group.bestRecord.effectivePrice)) }}
+              </div>
               <div class="text-[10px] text-gray-400 mt-1">{{ formatUnitPrice(group.bestRecord) }}</div>
             </div>
           </div>
