@@ -130,7 +130,6 @@
 
       <!-- 画面3: 単価比較 -->
       <section v-show="activeView === 'calc'" class="p-4 space-y-4">
-        <!-- 省略せずそのまま -->
         <div class="flex justify-end"><button @click="resetCalc" class="text-xs bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full font-bold shadow-sm active:scale-95">リセット</button></div>
         <article class="bg-amber-50 border border-amber-200 rounded-3xl p-4 shadow-sm">
           <div class="flex justify-between items-center mb-3"><h3 class="font-black text-amber-800 text-lg">商品 A</h3><button @click="registerFromCalc('a')" v-if="calc.a.price && calc.a.cap" class="text-[11px] bg-amber-600 text-white px-3 py-1.5 rounded-full font-bold shadow active:scale-95">価格を登録</button></div>
@@ -238,7 +237,7 @@
       <button @click="activeView = 'list'" class="flex-1 flex flex-col items-center justify-center font-bold text-[9px]" :class="activeView === 'list' ? 'text-theme' : 'text-gray-400'"><svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>リスト</button>
       <button @click="activeView = 'store'" class="flex-1 flex flex-col items-center justify-center font-bold text-[9px]" :class="activeView === 'store' ? 'text-theme' : 'text-gray-400'"><svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>店舗別</button>
       <button @click="activeView = 'calc'" class="flex-1 flex flex-col items-center justify-center font-bold text-[9px]" :class="activeView === 'calc' ? 'text-theme' : 'text-gray-400'"><svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>単価比較</button>
-      <button @click="activeView = 'recipe'" class="flex-1 flex flex-col items-center justify-center font-bold text-[9px]" :class="activeView === 'recipe' ? 'text-theme' : 'text-gray-400'"><svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>レシピ</button>
+      <button @click="activeView = 'recipe'" class="flex-1 flex flex-col items-center justify-center font-bold text-[9px]" :class="activeView === 'recipe' ? 'text-theme' : 'text-gray-400'"><svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477-4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>レシピ</button>
       <button @click="activeView = 'settings'" class="flex-1 flex flex-col items-center justify-center font-bold text-[9px]" :class="activeView === 'settings' ? 'text-gray-800' : 'text-gray-400'"><svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>設定</button>
     </nav>
 
@@ -271,7 +270,7 @@
       </div>
     </transition>
 
-    <!-- レシピ編集ボトムシート (出来上がり量・単位追加対応版) -->
+    <!-- レシピ編集ボトムシート -->
     <transition name="slide">
       <div v-if="isEditingRecipe" class="fixed inset-0 z-50 flex flex-col justify-end">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="isEditingRecipe = false"></div>
@@ -302,10 +301,8 @@
               <div class="space-y-2">
                 <div v-for="(ing, idx) in recipeForm.ingredients" :key="idx" class="flex items-center gap-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
                   <div class="flex-1 font-bold text-gray-700 text-sm truncate pl-2">{{ ing.subCategory }}</div>
-                  
                   <div class="flex">
                     <input type="number" v-model.number="ing.amountUsed" class="w-16 bg-gray-50 border-y border-l border-gray-200 rounded-l-lg p-2 outline-none text-right font-bold text-sm" placeholder="量">
-                    <!-- 単位選択プルダウンを追加 -->
                     <select v-model="ing.unit" class="w-16 bg-gray-50 border border-gray-200 rounded-r-lg p-2 outline-none text-[10px] font-bold">
                       <option :value="getBestUnit(ing.subCategory)">{{ getBestUnit(ing.subCategory) }}</option>
                       <option value="合" v-if="getBestUnit(ing.subCategory) !== '合'">合</option>
@@ -317,7 +314,6 @@
                       <option value="小さじ" v-if="getBestUnit(ing.subCategory) !== '小さじ'">小さじ</option>
                     </select>
                   </div>
-
                   <button @click="recipeForm.ingredients.splice(idx, 1)" class="w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-lg border border-red-100 active:scale-95 shrink-0">✕</button>
                 </div>
               </div>
@@ -329,23 +325,37 @@
       </div>
     </transition>
 
-    <!-- 材料選択モーダル -->
+    <!-- 材料選択モーダル (グループ化・整理対応版) -->
     <transition name="fade">
-      <div v-if="isIngredientPickerOpen" class="fixed inset-0 z-[60] flex flex-col bg-white">
+      <div v-if="isIngredientPickerOpen" class="fixed inset-0 z-[60] flex flex-col bg-gray-50">
         <div class="px-4 py-3 bg-theme text-white flex items-center gap-3 shadow-md">
           <button @click="isIngredientPickerOpen = false" class="p-1"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
           <div class="font-bold text-lg">材料を選択</div>
         </div>
-        <div class="p-3 bg-gray-50 border-b border-gray-200">
-          <input type="search" v-model="recipeIngredientSearch" placeholder="材料を検索..." class="w-full rounded-xl border border-gray-300 px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-theme text-sm font-bold text-gray-700 shadow-sm">
+        <div class="p-3 bg-white border-b border-gray-200 shadow-sm z-10 relative">
+          <input type="search" v-model="recipeIngredientSearch" placeholder="材料を検索..." class="w-full rounded-xl border border-gray-300 px-4 py-3 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-theme text-sm font-bold text-gray-700">
         </div>
-        <div class="flex-1 overflow-y-auto p-2">
-          <div v-if="pickerGroups.length === 0" class="text-center text-gray-400 py-10 font-bold">見つかりませんでした</div>
-          <div class="grid grid-cols-2 gap-2">
-            <button v-for="group in pickerGroups" :key="group.subName" @click="selectIngredientForRecipe(group)" class="bg-white border border-gray-200 rounded-xl p-3 text-left shadow-sm active:scale-95 flex items-center gap-2">
-              <div class="text-2xl">{{ group.emoji }}</div>
-              <div class="min-w-0"><div class="text-[10px] text-gray-400">{{ group.mainCategory }}</div><div class="font-bold text-gray-800 text-sm truncate">{{ group.subName }}</div></div>
-            </button>
+        
+        <div class="flex-1 overflow-y-auto p-3 bg-white">
+          <div v-if="groupedPickerGroups.length === 0" class="text-center text-gray-400 py-10 font-bold">見つかりませんでした</div>
+          
+          <div v-for="section in groupedPickerGroups" :key="section.category" class="mb-6">
+            <!-- 大分類の見出し -->
+            <h4 class="font-black text-gray-700 text-sm mb-3 border-b-2 border-gray-100 pb-1 px-1 flex items-center gap-2">
+              <span class="bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-xs">{{ section.category }}</span>
+            </h4>
+            <!-- グリッド表示 -->
+            <div class="grid grid-cols-2 gap-2">
+              <button v-for="group in section.items" :key="group.subName" @click="selectIngredientForRecipe(group)" class="bg-white border border-gray-200 rounded-xl p-3 text-left shadow-sm active:scale-95 flex items-start gap-2 transition-colors hover:bg-orange-50">
+                <div class="text-2xl leading-none mt-0.5 shrink-0">{{ group.emoji }}</div>
+                <div class="min-w-0 flex-1">
+                  <div class="font-bold text-gray-800 text-[13px] leading-tight truncate">{{ group.subName }}</div>
+                  <div class="text-[10px] text-gray-500 mt-1 font-medium bg-gray-100 inline-block px-1.5 py-0.5 rounded truncate max-w-full" v-if="group.bestRecord">
+                    {{ group.bestRecord.capacity }}{{ group.bestRecord.unit }} で登録
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -381,7 +391,6 @@
         const isEditingRecipe = ref(false);
         const isIngredientPickerOpen = ref(false);
         const recipeIngredientSearch = ref('');
-        // 分割数 (yieldAmount) と 単位 (yieldUnit) を追加
         const recipeForm = ref({ id: null, name: '', yieldAmount: 1, yieldUnit: '杯分', ingredients: [] });
 
         const resetCalc = () => { calc.value = { a: { price: '', cap: '', store: 'その他' }, b: { price: '', cap: '', store: 'その他' } }; };
@@ -553,20 +562,45 @@
         };
 
         const editRecipe = (recipe) => {
-          recipeForm.value = JSON.parse(JSON.stringify(recipe)); // ディープコピー
-          // 古いデータへのフォールバック対応
+          recipeForm.value = JSON.parse(JSON.stringify(recipe));
           if (!recipeForm.value.yieldAmount) recipeForm.value.yieldAmount = 1;
           if (!recipeForm.value.yieldUnit) recipeForm.value.yieldUnit = '食';
           isEditingRecipe.value = true;
         };
 
-        const pickerGroups = computed(() => {
+        // UI改善：材料をグループ化してソートするロジック
+        const groupedPickerGroups = computed(() => {
           let list = allGroups.value;
           if (recipeIngredientSearch.value) {
             const q = recipeIngredientSearch.value.toLowerCase();
             list = list.filter(g => g.subName.toLowerCase().includes(q));
           }
-          return list;
+          
+          // 大分類でグループ化
+          const grouped = {};
+          list.forEach(g => {
+            const cat = g.mainCategory || '未分類';
+            if (!grouped[cat]) grouped[cat] = [];
+            grouped[cat].push(g);
+          });
+
+          // 設定タブ順に大分類をソート
+          const order = settings.value.tabOrderArray || [];
+          const sortedKeys = Object.keys(grouped).sort((a, b) => {
+            const idxA = order.indexOf(a), idxB = order.indexOf(b);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return a.localeCompare(b, 'ja');
+          });
+
+          // 小分類をあいうえお順にソートして返す
+          return sortedKeys.map(key => {
+            return {
+              category: key,
+              items: grouped[key].sort((a, b) => a.subName.localeCompare(b.subName, 'ja'))
+            };
+          });
         });
 
         const selectIngredientForRecipe = (group) => {
@@ -574,7 +608,7 @@
           recipeForm.value.ingredients.push({ 
             subCategory: group.subName, 
             amountUsed: '',
-            unit: defaultUnit // 選択した底値の単位をデフォルトに
+            unit: defaultUnit 
           });
           isIngredientPickerOpen.value = false;
           recipeIngredientSearch.value = '';
@@ -585,18 +619,16 @@
           return group && group.bestRecord ? group.bestRecord.unit : '';
         };
 
-        // 単位自動換算ロジック
         const getConvertedAmount = (amount, fromUnit, toUnit) => {
           if (!fromUnit || !toUnit || fromUnit === toUnit) return amount;
           
           const fromBase = fromUnit.toLowerCase();
           const toBase = toUnit.toLowerCase();
           
-          // 重量への変換 (底値が g または kg の場合)
           if (toBase === 'g' || toBase === 'kg') {
             let amountInGrams = amount;
             if (fromBase === 'kg') amountInGrams = amount * 1000;
-            else if (fromBase === '合') amountInGrams = amount * 150; // お米1合 = 150g想定
+            else if (fromBase === '合') amountInGrams = amount * 150; 
             else if (fromBase === '大さじ') amountInGrams = amount * 15;
             else if (fromBase === '小さじ') amountInGrams = amount * 5;
 
@@ -604,11 +636,10 @@
             return amountInGrams;
           }
           
-          // 体積への変換 (底値が ml または l の場合)
           if (toBase === 'ml' || toBase === 'l') {
             let amountInMl = amount;
             if (fromBase === 'l') amountInMl = amount * 1000;
-            else if (fromBase === '合') amountInMl = amount * 180; // 液体1合 = 180ml想定
+            else if (fromBase === '合') amountInMl = amount * 180; 
             else if (fromBase === '大さじ') amountInMl = amount * 15;
             else if (fromBase === '小さじ') amountInMl = amount * 5;
 
@@ -616,7 +647,6 @@
             return amountInMl;
           }
           
-          // それ以外の変換不能な単位（個など）はそのまま
           return amount;
         };
 
@@ -630,7 +660,7 @@
               ingredients: recipeForm.value.ingredients.map(i => ({ 
                 subCategory: i.subCategory, 
                 amountUsed: Number(i.amountUsed) || 0,
-                unit: i.unit // 単位も保存
+                unit: i.unit 
               }))
             };
             if (recipeForm.value.id) await setDoc(doc(db, "recipes", recipeForm.value.id), payload);
@@ -650,9 +680,8 @@
                 const best = group.bestRecord;
                 const capacity = Math.max(Number(best.capacity), 1);
                 const bestUnit = best.unit;
-                const ingUnit = ing.unit || bestUnit; // 単位情報がない古いデータは底値単位とみなす
+                const ingUnit = ing.unit || bestUnit; 
                 
-                // ここで自動換算を実行
                 const convertedAmount = getConvertedAmount(Number(ing.amountUsed), ingUnit, bestUnit);
                 
                 const cost = (convertedAmount / capacity) * best.effectivePrice;
@@ -663,16 +692,12 @@
              }
           });
           
-          // 分割数による1食あたりの計算
           const yieldAmount = Number(recipe.yieldAmount) || 1;
           const unitCost = totalCost / yieldAmount;
           
           return { totalCost, unitCost, details };
         };
 
-        // ------------------
-        // 以下、通常の機能
-        // ------------------
         const openAddSheet = () => { form.value = { id: null, mainCategory: activeMainCat.value || '', subCategory: searchQuery.value || '', productName: '', capacity: '', unitSelect: 'g', customUnit: '', price: '', store: settings.value.stores[0]?.name || '業務スーパー' }; isAdding.value = true; };
         const quickAddToGroup = (group) => { form.value = { id: null, mainCategory: group.mainCategory || '', subCategory: group.subName, productName: group.bestRecord.productName || '', capacity: group.bestRecord.capacity || '', unitSelect: 'g', customUnit: '', price: '', store: settings.value.stores[0]?.name || 'その他' }; isAdding.value = true; };
         const registerFromCalc = (itemKey) => { form.value = { id: null, mainCategory: activeMainCat.value || '', subCategory: '', productName: '', capacity: calc.value[itemKey].cap || '', unitSelect: 'g', customUnit: '', price: calc.value[itemKey].price || '', store: calc.value[itemKey].store }; isAdding.value = true; };
@@ -733,7 +758,7 @@
 
         return { 
           activeView, mainRef, isAdding, records, recipes, searchQuery, activeMainCat, activeStoreTab, expandedGroup, calc, form, settings, mutableTabOrder, cartChecked,
-          isEditingRecipe, isIngredientPickerOpen, recipeIngredientSearch, recipeForm, openRecipeSheet, editRecipe, pickerGroups, selectIngredientForRecipe, getBestUnit, saveRecipe, deleteRecipe, getRecipeCostInfo,
+          isEditingRecipe, isIngredientPickerOpen, recipeIngredientSearch, recipeForm, openRecipeSheet, editRecipe, groupedPickerGroups, selectIngredientForRecipe, getBestUnit, saveRecipe, deleteRecipe, getRecipeCostInfo,
           uniqueRawMainCategories, sortedMainCategories, filteredGroups, storeBuyList, toggleExpand, openAddSheet, quickAddToGroup, registerFromCalc, editRecord, saveRecord, deleteRecord, saveSettings, moveTabUp, moveTabDown, handleTouchStart, handleTouchEnd, getCalcEffectivePrice, resetCalc, getStoreDiscount, addStore, removeStore,
           formatUnitPrice, formatYen, getStoreIcon, getStoreTheme, calcResult, calcValid 
         };
