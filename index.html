@@ -152,7 +152,8 @@
           <div v-for="recipe in recipes" :key="recipe.id" class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
             <div class="flex justify-between items-start mb-3 border-b border-gray-100 pb-3">
               <div class="flex items-center gap-2">
-                <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-xl shrink-0 border border-orange-100">🍳</div>
+                <!-- アイコンを動的に変更 -->
+                <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-xl shrink-0 border border-orange-100">{{ getRecipeEmoji(recipe.name) }}</div>
                 <h3 class="font-black text-gray-800 text-lg">{{ recipe.name }}</h3>
               </div>
               <div class="text-right">
@@ -325,7 +326,7 @@
       </div>
     </transition>
 
-    <!-- 材料選択モーダル (グループ化・整理対応版) -->
+    <!-- 材料選択モーダル -->
     <transition name="fade">
       <div v-if="isIngredientPickerOpen" class="fixed inset-0 z-[60] flex flex-col bg-gray-50">
         <div class="px-4 py-3 bg-theme text-white flex items-center gap-3 shadow-md">
@@ -340,11 +341,9 @@
           <div v-if="groupedPickerGroups.length === 0" class="text-center text-gray-400 py-10 font-bold">見つかりませんでした</div>
           
           <div v-for="section in groupedPickerGroups" :key="section.category" class="mb-6">
-            <!-- 大分類の見出し -->
             <h4 class="font-black text-gray-700 text-sm mb-3 border-b-2 border-gray-100 pb-1 px-1 flex items-center gap-2">
               <span class="bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-xs">{{ section.category }}</span>
             </h4>
-            <!-- グリッド表示 -->
             <div class="grid grid-cols-2 gap-2">
               <button v-for="group in section.items" :key="group.subName" @click="selectIngredientForRecipe(group)" class="bg-white border border-gray-200 rounded-xl p-3 text-left shadow-sm active:scale-95 flex items-start gap-2 transition-colors hover:bg-orange-50">
                 <div class="text-2xl leading-none mt-0.5 shrink-0">{{ group.emoji }}</div>
@@ -439,6 +438,23 @@
           if (text.includes('魚')) return '🐟';
           if (text.includes('お菓子')) return '🥞';
           return '🛒';
+        };
+
+        const getRecipeEmoji = (name) => {
+          const text = (name || "").toLowerCase();
+          if (text.includes('カレー')) return '🍛';
+          if (text.includes('ご飯') || text.includes('ごはん') || text.includes('米') || text.includes('おにぎり')) return '🍚';
+          if (text.includes('スープ') || text.includes('汁') || text.includes('シチュー')) return '🥣';
+          if (text.includes('サラダ')) return '🥗';
+          if (text.includes('パン') || text.includes('サンド')) return '🍞';
+          if (text.includes('パスタ') || text.includes('スパゲッティ')) return '🍝';
+          if (text.includes('麺') || text.includes('うどん') || text.includes('ラーメン') || text.includes('そば')) return '🍜';
+          if (text.includes('肉') || text.includes('ハンバーグ') || text.includes('唐揚げ')) return '🍖';
+          if (text.includes('魚') || text.includes('刺身') || text.includes('焼き魚')) return '🐟';
+          if (text.includes('鍋')) return '🍲';
+          if (text.includes('卵') || text.includes('たまご') || text.includes('オム')) return '🍳';
+          if (text.includes('お菓子') || text.includes('ケーキ') || text.includes('スイーツ') || text.includes('ホットケーキ')) return '🥞';
+          return '🍽️';
         };
 
         const formatYen = (val) => val ? Number(val).toLocaleString() + '円' : '0円';
@@ -552,10 +568,6 @@
 
         const toggleExpand = (name) => { expandedGroup.value = expandedGroup.value === name ? '' : name; };
 
-        // ------------------
-        // レシピ＆単位換算関連
-        // ------------------
-        
         const openRecipeSheet = () => {
           recipeForm.value = { id: null, name: '', yieldAmount: 1, yieldUnit: '杯分', ingredients: [] };
           isEditingRecipe.value = true;
@@ -568,7 +580,6 @@
           isEditingRecipe.value = true;
         };
 
-        // UI改善：材料をグループ化してソートするロジック
         const groupedPickerGroups = computed(() => {
           let list = allGroups.value;
           if (recipeIngredientSearch.value) {
@@ -576,7 +587,6 @@
             list = list.filter(g => g.subName.toLowerCase().includes(q));
           }
           
-          // 大分類でグループ化
           const grouped = {};
           list.forEach(g => {
             const cat = g.mainCategory || '未分類';
@@ -584,7 +594,6 @@
             grouped[cat].push(g);
           });
 
-          // 設定タブ順に大分類をソート
           const order = settings.value.tabOrderArray || [];
           const sortedKeys = Object.keys(grouped).sort((a, b) => {
             const idxA = order.indexOf(a), idxB = order.indexOf(b);
@@ -594,7 +603,6 @@
             return a.localeCompare(b, 'ja');
           });
 
-          // 小分類をあいうえお順にソートして返す
           return sortedKeys.map(key => {
             return {
               category: key,
@@ -760,7 +768,7 @@
           activeView, mainRef, isAdding, records, recipes, searchQuery, activeMainCat, activeStoreTab, expandedGroup, calc, form, settings, mutableTabOrder, cartChecked,
           isEditingRecipe, isIngredientPickerOpen, recipeIngredientSearch, recipeForm, openRecipeSheet, editRecipe, groupedPickerGroups, selectIngredientForRecipe, getBestUnit, saveRecipe, deleteRecipe, getRecipeCostInfo,
           uniqueRawMainCategories, sortedMainCategories, filteredGroups, storeBuyList, toggleExpand, openAddSheet, quickAddToGroup, registerFromCalc, editRecord, saveRecord, deleteRecord, saveSettings, moveTabUp, moveTabDown, handleTouchStart, handleTouchEnd, getCalcEffectivePrice, resetCalc, getStoreDiscount, addStore, removeStore,
-          formatUnitPrice, formatYen, getStoreIcon, getStoreTheme, calcResult, calcValid 
+          formatUnitPrice, formatYen, getStoreIcon, getStoreTheme, calcResult, calcValid, getRecipeEmoji
         };
       }
     }).mount('#app');
